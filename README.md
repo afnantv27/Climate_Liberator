@@ -1,145 +1,166 @@
-# Cell2Fire W
+# Climate Liberator
 
-[![build & test debian-stable](https://github.com/fire2a/C2F-W/actions/workflows/build-debian-stable.yml/badge.svg)](https://github.com/fire2a/C2F-W/actions/workflows/build-debian-stable.yml)
-[![build & test manylinux & ubuntu-jammy](https://github.com/fire2a/C2F-W/actions/workflows/build-manylinux.yml/badge.svg)](https://github.com/fire2a/C2F-W/actions/workflows/build-manylinux.yml)
-[![build & test windows](https://github.com/fire2a/C2F-W/actions/workflows/build-windows.yml/badge.svg)](https://github.com/fire2a/C2F-W/actions/workflows/build-windows.yml)
-[![build macos all](https://github.com/fire2a/C2F-W/actions/workflows/build-macos.yml/badge.svg)](https://github.com/fire2a/C2F-W/actions/workflows/build-macos.yml)
-[![release](https://github.com/fire2a/C2F-W/actions/workflows/release.yml/badge.svg)](https://github.com/fire2a/C2F-W/actions/workflows/release.yml)
-![License](https://img.shields.io/github/license/fire2a/C2F-W.svg)
+Climate Liberator is a macOS climate risk intelligence platform for company-scale hazard simulation, portfolio screening, forecast intelligence, and disclosure workflows. The current build is India-first, wildfire-led, and designed to scale into a broader company climate risk operating system.
 
-A big-scale, grid, forest fire simulator; parallel and fast (c++) nevertheless with a friendly graphical user interface
-for QGIS.
+## What This Repository Contains
 
-_Originally forked from [Cell2Fire](https://github.com/cell2fire/Cell2Fire), thanks to the work of Cristobal Pais, Jaime
-Carrasco, David Martell, [David L. Woodruff](https://github.com/DLWoodruff), Andres Weintraub, et al._
+This repository is no longer just a wildfire engine fork. It is the working codebase for the Climate Liberator product and its supporting build/data layers.
 
-This fire spread simulator, supports 3 fire models:
+Core product surfaces:
+- `Dashboard`: the main launcher for the platform
+- `Portfolio Intelligence`: company, site, and imported exposure screening
+- `Climate Simulation`: wildfire simulation and evidence generation
+- `Forecast Intelligence`: weather, seasonal, subseasonal, and air-quality intelligence
+- `TCFD Dashboard`: review, approval, and board-pack workflow
+- `Executive Overview`: management-facing summary of promoted evidence
 
-* Kitral, formerly: [C2F+K](https://github.com/fire2a/C2FK)
-* Scott&Burgan, formerly [C2F+S&B](https://github.com/fire2a/C2FSB)
-* Canadian Forest Fire Behavior Prediction System, OG [Cell2Fire](https://github.com/cell2fire/Cell2Fire)
+## Current Product Capabilities
 
-As Cell2Fire: i) the landscape is characterized as a grid, in which every cell has the same size, and the necessary
-information to simulate fire spread, i.e. fuel type, elevation and ignition probability, among others; ii) exploits
-parallel computation methods which allows users to run large-scale simulations in short periods of time; iii) the fires
-spread within each cell is assumed to be elliptical; and iv) it includes powerful statistical, graphical output, and
-spatial analysis features to facilitate the display and analysis of projected fire growth.
+### Climate Simulation
+- Wildfire simulation workflow with run configuration import/export
+- Output review, evidence packaging, and artifact handling
+- India preparedness and operations-console style execution
+- Underlying wildfire engine support from the Cell2Fire-based code in this repository
 
-Installation, usage, specifications available by [reading the friendly manual here](https://fire2a.github.io/docs/).
+### Portfolio Intelligence
+- India-first portfolio and site screening
+- Imported OED portfolio intake and canonical exposure persistence
+- OED-style export for interoperability
+- Risk concentration and nearby asset/site context
 
-[O leyendo el manual acá](https://fire2a.github.io/documentacion/)
+### Forecast Intelligence
+- Short-term, subseasonal, and seasonal forecast support
+- Air-quality outlook support
+- Processed feed priority with live fallback where appropriate
+- Trust, freshness, source, and evidence-promotion controls
 
-# Usage (TL;DR)
+### Disclosure Workflow
+- Scenario library and package review workflow
+- Threshold-breach actions
+- Approval evidence and review history
+- Board-pack export
+- Quantitative financial-effects proxy support
 
-- [Easy](https://fire2a.github.io/docs/docs/qgis-toolbox/README.html#usage-alternatives): Use through QGIS desktop
-  application
-- [Moderate: CLI](#moderate-cli): Download a release or get the container
-- [Collaborative](##collaborative): Clone & [compile](https://fire2a.github.io/docs/docs/Cell2Fire/README.html)
+## Repository Structure
 
-# Output examples
+Top-level layout:
 
-## Previncat's Zone 60 (Catalonian Instance): forest and a simulated fire spread with its corresponding scar and growth propagation tree.
-
-![Example-Instance_Scar](output/example-scar.png)
-
-## Risk metrics: Burn Probability (BP), Betweenness Centrality (BC), Downstream Protection Value (DPV), and Growth Propagation Tree (GPT).
-
-![Example-Risk_Metrics](output/example-metrics.png)
-
-## Easy: Graphical User Interface for QGIS
-
-1. Install QGIS >= LTR version
-2. Add [this](https://fire2a.github.io/fire-analytics-qgis-processing-toolbox-plugin/plugins.xml) as plugin server repo
-   in QGIS
-3. Pip install python dependendiencies to use other related algorithms such as risk metrics and landscape decision
-   optimization
-4. Install the plugin from the QGIS plugin manager
-5. Use the plugin from the processing toolbox: Use the instance downloader to get ready instance, and then simulate your
-   first wildfire!
-
-Full guide, how to [fire2a.io/docs](https://fire2a.github.io/docs/)
-Plugin
-repo: [fire2a/fire-analytics-qgis-processing-toolbox-plugin](https://github.com/fire2a/fire-analytics-qgis-processing-toolbox-plugin)
-repo
-
-## Moderate: CLI
-
-### Get a Release
-
-Go to releases (right vertical tab bar):
-
-1. Download the latest (non-draft) release version of the binary, choose platform:
-
-    - Microsoft Windows (10 or 11) also includes .dll dependencies  
-      `Cell2FireW_v<x.y.z>-Windows-x86_64-binary.zip`
-    - Linux, targeting distribution-codename and dependent runtime libraries:  
-      `Cell2FireW_v<x.y.z>-Debian.trixie.x86_64-binary.zip` needs `apt install libtiff6 libgomp1`  
-      `Cell2FireW_v<x.y.z>-Ubuntu.jammy.x86_64-binary.zip` needs `apt install libtiff5 libstdc++6 libgomp1 libgcc1`
-    - Most other linuxes, no dependencies. _Although it may not run parallel!_  
-      `Cell2FireW_v<x.y.z>-manylinux-x86_64-binary.zip`
-    - Contains them all and more, is meant for the QGIS plugin    
-      `Cell2FireW_v<x.y.z>.zip`
-
-2. Jumpstart into downloading a prepared instance, choosing:
-
-    - Fuel model: `Kitral`, `Scott&Burgan`, or `FBP-Canada` (--sim <K|S|C>)
-    - Raster format: GeoTiff`.tif` or AIIGrid`.asc`
-
-3. Open a terminal, type the following:
-
-```bash
-# [once] make it executable
-chmod +x </path/to/Cell2FireW/binary>/Cell2Fire[.suffix]
-# [optional] make it accessible from other directories
-export PATH=$PATH:/path/to/Cell2FireW/binar/Cell2Fire[.suffix]
-
-# needs an empty directory to store the results
-mkdir results 
-
-# run idea
-Cell2Fire[.exe|Debian.boookworm|...] --input-instance-folder </path/to/instance> --output-folder </path/to/empty/results> --sim <K|S|C> --nthreads 16 > log.txt
-
-# example
-Cell2Fire --final-grid --output-messages --out-ros --sim S --nsims 2 --seed 123 --nthreads 3 --fmc 66 --scenario 2 --cros --weather rows --input-instance-folder /tmp/processing_cdcCGk/Vilopriu_2013 --output-folder /tmp/processing_cdcCGk/Vilopriu_2013/results | tee log.txt
-
-# check the results: to convert to tiff or see the results in QGIS, use the plugin
+```text
+ClimateLiberatorApp/    macOS application, tests, assets, UI, stores, services
+Cell2Fire/              underlying wildfire engine and native simulation code
+data/                   sample and prepared data inputs
+docs/                   architecture, optimization, QA, and product planning
+container/              container build assets
+test/                   engine-side tests and fixtures
+.github/workflows/      CI workflows inherited and evolving with the project
 ```
 
-### Containerized
-TL;DR:
+Important app paths:
+- App project:
+  - `ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj`
+- Main app source:
+  - `ClimateLiberatorApp/ClimateLiberator/ClimateLiberator`
+
+## Architecture Direction
+
+Climate Liberator is being built as a layered system:
+
+1. `App layer`
+   - macOS-native product surfaces for operations, portfolio, forecast, and disclosure
+2. `Build/data layer`
+   - typed contracts, manifests, validators, portfolio feeds, and forecast artifacts
+3. `Engine/provider layer`
+   - wildfire engine, processed forecast feeds, and external data/provider integration
+
+The codebase is actively being refactored toward:
+- stronger SOLID boundaries
+- smaller service-oriented modules
+- artifact-first workflows
+- better scaling for future hazards and frameworks
+
+## Getting Started
+
+### macOS app
+
+Open the Xcode project:
+
 ```bash
-podman build -t cell2fire -f container/Containerfile .
-mkdir results
-podman run -v $(pwd):/mnt cell2fire \
-    --input-instance-folder /mnt/data/ScottAndBurgan/Vilopriu_2013-tif \
-    --output-folder /mnt/results \
-    --nsims 3 --sim S \
-    --output-messages --ignitionsLog | tee results/log.txt
-rm -r results/*
+open /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
 ```
 
-[More options and tutorial here](container/README.md)
-
-## Collaborative
-
-Compile it
+Or build from the command line:
 
 ```bash
-# dependencies
-sudo apt install g++ libboost-random-dev libtiff-dev
-# or brew
-brew install gcc@12 libomp boost libtiff # llvm ?
-
-# fork & clone 
-git clone git@github.com:<YOU>/C2F-W.git
-cd C2F-W/Cell2Fire
-
-# compile
-make 
-# there area other makefiles for other platforms, e.g. makefile.macos
-
-# [optional] copies Cell2Fire to /usr/local/bin
-sudo make install  
+xcodebuild \
+  -project /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -scheme ClimateLiberator \
+  -destination 'platform=macOS' \
+  build
 ```
 
-Other platform details at `.github/workflows/build-*.yml` and `makefile.*`
+### Tests
+
+App scheme tests:
+
+```bash
+xcodebuild \
+  -project /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -scheme ClimateLiberator \
+  -destination 'platform=macOS' \
+  test
+```
+
+Build/data validation suites:
+
+```bash
+/Users/afnan/Desktop/Build/engine-rewrite/tests/run_disclosure_milestone.sh
+/Users/afnan/Desktop/Build/india-risk-data/tests/run_data_milestone.sh
+/Users/afnan/Desktop/Build/engine-rewrite/tests/run_performance_validation.sh
+```
+
+## Standards and Interoperability
+
+The product is being built to support structured climate risk workflows rather than only raw hazard runs.
+
+Current and planned standards seams include:
+- `OED`: structured exposure intake/export
+- `TCFD / IFRS S2`: disclosure workflow foundation
+- future adapter direction for broader reporting frameworks
+
+## Current Status
+
+The repository is in active product transition from an inherited wildfire simulation base into a full climate risk intelligence platform.
+
+Already in place:
+- renamed product and app structure
+- separate dashboard/workspace model
+- OED intake/export seam
+- forecast intelligence window and processed-feed model
+- TCFD review and board-pack workflow
+- Xcode unit, performance, and UI smoke tests
+- Obsidian second-brain documentation of architecture and decisions
+
+Still evolving:
+- deeper simulation orchestration extraction
+- richer portfolio analytics and company hierarchy
+- stronger artifact-first runtime pipeline
+- broader framework support
+- future multi-hazard expansion
+
+## Heritage
+
+This repository still contains the Cell2Fire-derived wildfire engine and related native tooling. That work remains important inside Climate Liberator, but the repository now represents a larger product system than the original simulator alone.
+
+## Documentation
+
+Primary local architecture and project memory live in:
+
+- `docs/`
+- `/Users/afnan/Documents/Obsidian Vault/Codex/Climate Liberator`
+
+The Obsidian second brain tracks:
+- system architecture
+- engineering decisions
+- build/data layer design
+- testing and benchmark notes
+- roadmap and connected graph views
