@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-rem Run from repo root: C:\LOCAL\fire\C2F-W
+rem Run from repo root: C:\LOCAL\fire\Climate-Liberator
 pushd "%~dp0..\.." || exit /b 1
 
 rem Initialize VS dev environment (adjust path if needed)

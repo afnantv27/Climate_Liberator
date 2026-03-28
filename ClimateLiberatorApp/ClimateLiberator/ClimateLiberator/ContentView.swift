@@ -11,8 +11,8 @@ struct ContentView: View {
     @ObservedObject private var forecastStore: ForecastIntelligenceStore
     @Environment(\.openWindow) private var openWindow
 
-    @AppStorage("climateliberator.binaryPath") private var binaryPath = "/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire"
-    @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Wildfire Model/Cell2Fire/C2F-W/data/ScottAndBurgan/Clinge"
+    @AppStorage("climateliberator.binaryPath") private var binaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
+    @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
     @AppStorage("climateliberator.outputFolder") private var outputFolder = ""
     @AppStorage("climateliberator.theme") private var theme: ThemeStyle = .night
 
@@ -71,8 +71,9 @@ struct ContentView: View {
         ("Kitral", "K"),
         ("FBP-Canada", "C")
     ]
-    private let preferredBinaryPath = "/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire"
+    private let preferredBinaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
     private let legacyBinaryPaths = [
+        "/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire",
         "/Users/afnan/Desktop/Wildfire Model/Cell2Fire/C2F-W/Cell2Fire/Cell2Fire"
     ]
 

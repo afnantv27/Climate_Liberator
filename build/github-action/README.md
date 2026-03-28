@@ -1,6 +1,6 @@
 # Github Actions
 
-This document describes the workflows located in `.github/workflows`, its purpose is to build, test, document and create releases of Cell2Fire using GitHub Actions, GitHub's CI/CD platform.
+This document describes the workflows located in `.github/workflows`, its purpose is to build, test, document and create releases for the Climate Liberator repository and its underlying wildfire engine using GitHub Actions, GitHub's CI/CD platform.
 What triggers them and what repo-level actions variables are used to control these.
 
 Workflows are located in `.github/workflows`
@@ -39,7 +39,7 @@ Workflows are located in `.github/workflows`
 ## Configuration
 
 ### Configuring repository-level Actions variables
-- Go to: https://github.com/fire2a/C2F-W/settings/variables/actions
+- Go to: https://github.com/afnantv27/Climate_Liberator/settings/variables/actions
 - The repository variables used by `release.yml` and related `build-*.yml` workflows
   include (typical names and example values):
   - `BUILD_DEBIAN` : `true` or `false`
@@ -78,10 +78,10 @@ Workflows are located in `.github/workflows`
    ```
 
 3. Wait for the `release.yml` workflow to complete (successfully).
-   - https://github.com/fire2a/C2F-W/actions/workflows/release.yml
+   - https://github.com/afnantv27/Climate_Liberator/actions/workflows/release.yml
 
 4. Go to the releases section, (verify) and edit the release to Publish it!
-   - https://github.com/fire2a/c2f-w/releases
+   - https://github.com/afnantv27/Climate_Liberator/releases
 
 ### 2. How to run workflows manually
 - From the GitHub web UI: Actions → select the workflow (for example "Release") →
@@ -90,4 +90,3 @@ Workflows are located in `.github/workflows`
 - For `ci.yml`, push a commit or open a PR against `main`.
 
 ### 3. Workflow changes must reach the `main` branch to take effect on the GitHub web UI
-

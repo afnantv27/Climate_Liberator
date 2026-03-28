@@ -29,15 +29,15 @@ rm -r results/*
 
 ### 1. Lightweight
 ```
-git clone git@github.com:Cell2Fire/C2F-W.git
-cd C2F-W
+git clone https://github.com/afnantv27/Climate_Liberator.git
+cd Climate-Liberator
 podman build -t cell2fire -f container/Containerfile .
 ```
 
 ### 2. Run tests too
 ```
-git clone git@github.com:Cell2Fire/C2F-W.git
-cd C2F-W
+git clone https://github.com/afnantv27/Climate_Liberator.git
+cd Climate-Liberator
 podman build -t cell2firetests -f container/Containerfile+tests .
 ```
 
@@ -45,13 +45,13 @@ podman build -t cell2firetests -f container/Containerfile+tests .
 Also wget and unzip is needed to get the Dockerfile and a test instance.
 ```bash
 # get the Dockerfile
-wget https://github.com/fire2a/C2F-W/raw/main/container/Dockerfile
+wget https://raw.githubusercontent.com/afnantv27/Climate_Liberator/main/container/Dockerfile
 
 # build
 podman build -t cell2fire -f Dockerfile .
 
 # get an instance
-wget https://github.com/fire2a/C2F-W/releases/download/v1.0.1/Kitral-tif.zip
+wget https://github.com/afnantv27/Climate_Liberator/raw/main/data/Kitral/Portezuelo-tif.zip
 unzip Kitral-tif.zip -d data
 ```
 

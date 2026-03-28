@@ -3,7 +3,7 @@
 Utility runner for the Scott & Burgan Clinge dataset.
 
 This script wraps the compiled Cell2Fire binary so you can trigger a
-simulation against the `/Users/afnan/Desktop/C2F-W/data/ScottAndBurgan/Clinge`
+simulation against the `/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge`
 instance in a single command and always capture the Rate Of Spread (ROS)
 output in a deterministic location.
 """
@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--data",
-        default="/Users/afnan/Desktop/C2F-W/data/ScottAndBurgan/Clinge",
+        default="/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge",
         help="Input instance folder containing fuels, weather, etc.",
     )
     parser.add_argument(

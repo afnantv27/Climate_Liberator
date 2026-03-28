@@ -12,8 +12,8 @@ from rasterio.warp import reproject
 from skopt import gp_minimize
 from skopt.space import Real
 
-C2F_BIN = Path("/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire")
-DATA_DIR = Path("/Users/afnan/Desktop/C2F-W/data/ScottAndBurgan/Clinge")
+C2F_BIN = Path("/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire")
+DATA_DIR = Path("/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge")
 OUTPUT_DIR = DATA_DIR / "simOuts"
 TARGET_RASTER = Path("/Users/afnan/Downloads/ROS.tif")
 

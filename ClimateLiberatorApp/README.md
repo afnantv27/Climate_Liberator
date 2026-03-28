@@ -5,7 +5,7 @@ This folder hosts the SwiftUI front end that sits on top of the Cell2Fire CLI.
 ## Layout
 
 ```
-C2F-W/
+Climate-Liberator/
 ├─ Cell2Fire/               # original engine, builds with g++-15
 ├─ data/                    # sample inputs
 └─ ClimateLiberatorApp/
@@ -18,7 +18,7 @@ C2F-W/
 Use the helper script so every release uses the Homebrew GCC toolchain:
 
 ```bash
-cd /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp
+cd /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp
 ./scripts/build_cell2fire.sh
 ```
 

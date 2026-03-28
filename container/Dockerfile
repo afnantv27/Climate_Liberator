@@ -4,10 +4,10 @@ LABEL authors="matilde"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y g++ libboost-random-dev libtiff-dev git make unzip catch2
 
-RUN git clone https://github.com/fire2a/C2F-W.git
+RUN git clone https://github.com/afnantv27/Climate_Liberator.git Climate-Liberator
 
-RUN cd C2F-W/Cell2Fire && make
+RUN cd Climate-Liberator/Cell2Fire && make
 
-RUN chmod +x C2F-W/Cell2Fire/Cell2Fire
+RUN chmod +x Climate-Liberator/Cell2Fire/Cell2Fire
 
-ENTRYPOINT ["C2F-W/Cell2Fire/Cell2Fire"]
+ENTRYPOINT ["Climate-Liberator/Cell2Fire/Cell2Fire"]

@@ -2,7 +2,7 @@
 
 ```
 sudo apt-get install doxygen
-cd docs/C2F-W
+cd /Users/afnan/Desktop/Climate-Liberator/docs
 doxygen Doxyfile
 ```
 

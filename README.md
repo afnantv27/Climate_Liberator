@@ -85,14 +85,14 @@ The codebase is actively being refactored toward:
 Open the Xcode project:
 
 ```bash
-open /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
+open /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
 ```
 
 Or build from the command line:
 
 ```bash
 xcodebuild \
-  -project /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -project /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
   -scheme ClimateLiberator \
   -destination 'platform=macOS' \
   build
@@ -104,7 +104,7 @@ App scheme tests:
 
 ```bash
 xcodebuild \
-  -project /Users/afnan/Desktop/C2F-W/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -project /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
   -scheme ClimateLiberator \
   -destination 'platform=macOS' \
   test

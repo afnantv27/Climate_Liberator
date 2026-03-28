@@ -11,7 +11,7 @@ branches and commit messages.
        major modifications or impacts.
     3. **One Feature per Pull Request** – Keep pull requests focused on a single feature, fix, or improvement to ensure
        clarity and easier review.
-    4. **Scientific citations** - _Fire research deals with real life or death risks;_ If your code involves scientific models or calculations, include citations in [BibText format](https://www.bibtex.com/g/bibtex-format/). More info [Cell2Fire-W/docs/README.md](https://github.com/fire2a/C2F-W/blob/main/docs/README.md)
+    4. **Scientific citations** - _Fire research deals with real life or death risks;_ If your code involves scientific models or calculations, include citations in [BibText format](https://www.bibtex.com/g/bibtex-format/). More info [docs/README.md](https://github.com/afnantv27/Climate_Liberator/blob/main/docs/README.md)
 
 - Read https://github.com/fire2a#contributing
 
@@ -79,4 +79,3 @@ _Notice: This is not needed for this project, as we already have a `.clang-forma
     clang-format -style=gnu -dump-config > .clang-format    # create .clang-format settings file
     vim .clang-format                                       # modify .clang-format to your liking
     clang-format -i -style=file my-code.cpp                 # format a file
-
