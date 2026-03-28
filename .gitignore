@@ -214,3 +214,5 @@ default.profraw
 Cell2Fire/.claude/
 xcuserdata/
 *.xcuserstate
+
+*.gch
