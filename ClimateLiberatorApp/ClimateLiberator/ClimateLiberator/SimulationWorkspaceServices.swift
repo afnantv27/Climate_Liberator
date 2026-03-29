@@ -114,6 +114,285 @@ protocol SimulationOutputTreeServicing: Sendable {
                          limits: OutputTreeDiscoveryLimits) -> [OutputNode]
 }
 
+enum SimulationEngineMode: String, Codable, CaseIterable, Identifiable {
+    case legacyCell2Fire
+    case climateLiberatorRuntimePreview
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .legacyCell2Fire:
+            return "Legacy Cell2Fire backend"
+        case .climateLiberatorRuntimePreview:
+            return "Climate Liberator Runtime preview"
+        }
+    }
+}
+
+struct SimulationEngineRequest: Sendable {
+    let mode: SimulationEngineMode
+    let legacyBinaryPath: String
+    let simulatorCode: String
+    let inputFolder: String
+    let outputFolder: String
+    let includeROS: Bool
+    let weatherPeriodMinutes: Int
+    let firePeriodLength: Double
+    let outputFormat: OutputFormat
+    let numberOfSimulations: Int
+    let numberOfThreads: Int
+    let seed: Int
+}
+
+struct SimulationEngineExecutionResult: Sendable {
+    let mode: SimulationEngineMode
+    let engineLabel: String
+    let terminationStatus: Int32
+    let stdout: String
+    let stderr: String
+    let outputManifestURL: URL?
+    let runManifestURL: URL?
+    let runArtifactURL: URL?
+    let artifactIndexURL: URL?
+}
+
+protocol SimulationEngineServicing {
+    func cancel()
+    func run(request: SimulationEngineRequest,
+             onStandardOutput: ((String) -> Void)?,
+             onStandardError: ((String) -> Void)?,
+             completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void)
+}
+
+final class LegacyCell2FireEngineAdapter: SimulationEngineServicing {
+    private let runner: Cell2FireRunner
+
+    init(runner: Cell2FireRunner = Cell2FireRunner()) {
+        self.runner = runner
+    }
+
+    func cancel() {
+        runner.cancel()
+    }
+
+    func run(request: SimulationEngineRequest,
+             onStandardOutput: ((String) -> Void)?,
+             onStandardError: ((String) -> Void)?,
+             completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
+        runner.run(binaryPath: request.legacyBinaryPath,
+                   sim: request.simulatorCode,
+                   inputFolder: request.inputFolder,
+                   includeRos: request.includeROS,
+                   weatherPeriodMinutes: request.weatherPeriodMinutes,
+                   firePeriodLength: request.firePeriodLength,
+                   outputFolder: request.outputFolder,
+                   numberOfSimulations: request.numberOfSimulations,
+                   numberOfThreads: request.numberOfThreads,
+                   seed: request.seed,
+                   onStandardOutput: onStandardOutput,
+                   onStandardError: onStandardError) { result in
+            switch result {
+            case .success(let output):
+                completion(.success(
+                    SimulationEngineExecutionResult(
+                        mode: .legacyCell2Fire,
+                        engineLabel: SimulationEngineMode.legacyCell2Fire.label,
+                        terminationStatus: output.terminationStatus,
+                        stdout: output.stdout,
+                        stderr: output.stderr,
+                        outputManifestURL: nil,
+                        runManifestURL: nil,
+                        runArtifactURL: nil,
+                        artifactIndexURL: nil
+                    )
+                ))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+}
+
+final class ClimateLiberatorEngineAdapter: SimulationEngineServicing {
+    private let stateQueue = DispatchQueue(label: "com.climateliberator.runtime.preview-state", qos: .utility)
+    private var activeProcess: Process?
+    private let runtimeBinaryURL: URL
+
+    init(runtimeBinaryURL: URL = URL(fileURLWithPath: "/Users/afnan/Desktop/Build/engine-rewrite/build/climate-liberator-engine")) {
+        self.runtimeBinaryURL = runtimeBinaryURL
+    }
+
+    func cancel() {
+        stateQueue.sync {
+            activeProcess?.terminate()
+        }
+    }
+
+    func run(request: SimulationEngineRequest,
+             onStandardOutput: ((String) -> Void)?,
+             onStandardError: ((String) -> Void)?,
+             completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
+        guard FileManager.default.isExecutableFile(atPath: runtimeBinaryURL.path) else {
+            completion(.failure(Cell2FireRunner.RunnerError(
+                message: "Climate Liberator Runtime preview binary is missing or not executable at \(runtimeBinaryURL.path)"
+            )))
+            return
+        }
+
+        let process = Process()
+        process.executableURL = runtimeBinaryURL
+        process.currentDirectoryURL = runtimeBinaryURL.deletingLastPathComponent()
+
+        var args = [
+            "--input-instance-folder", request.inputFolder,
+            "--output-folder", request.outputFolder,
+            "--sim", request.simulatorCode,
+            "--landscape-format", request.outputFormat == .tif ? "tif" : "asc",
+            "--weather-input-format", "csv",
+            "--ignition-input-mode", "csv",
+            "--weather", "rows",
+            "--nsims", "\(request.numberOfSimulations)",
+            "--nthreads", "\(request.numberOfThreads)",
+            "--seed", "\(request.seed)",
+            "--weather-period-minutes", "\(request.weatherPeriodMinutes)",
+            "--execute"
+        ]
+        if !request.includeROS {
+            args.append("--no-ros")
+        }
+        process.arguments = args
+
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        process.standardOutput = outPipe
+        process.standardError = errPipe
+
+        let stdoutHandle = outPipe.fileHandleForReading
+        let stderrHandle = errPipe.fileHandleForReading
+        var capturedStdout = ""
+        var capturedStderr = ""
+        let callbackQueue = DispatchQueue(label: "com.climateliberator.runtime.preview-callback", qos: .utility)
+
+        stdoutHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8), !chunk.isEmpty else { return }
+            self.stateQueue.sync { capturedStdout.append(chunk) }
+            if let onStandardOutput {
+                callbackQueue.async { onStandardOutput(chunk) }
+            }
+        }
+
+        stderrHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let chunk = String(data: data, encoding: .utf8), !chunk.isEmpty else { return }
+            self.stateQueue.sync { capturedStderr.append(chunk) }
+            if let onStandardError {
+                callbackQueue.async { onStandardError(chunk) }
+            }
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                self.stateQueue.sync { self.activeProcess = process }
+                try process.run()
+            } catch {
+                self.stateQueue.sync { self.activeProcess = nil }
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+
+            process.waitUntilExit()
+            stdoutHandle.readabilityHandler = nil
+            stderrHandle.readabilityHandler = nil
+
+            if let chunk = String(data: stdoutHandle.readDataToEndOfFile(), encoding: .utf8), !chunk.isEmpty {
+                self.stateQueue.sync { capturedStdout.append(chunk) }
+                if let onStandardOutput {
+                    callbackQueue.async { onStandardOutput(chunk) }
+                }
+            }
+            if let chunk = String(data: stderrHandle.readDataToEndOfFile(), encoding: .utf8), !chunk.isEmpty {
+                self.stateQueue.sync { capturedStderr.append(chunk) }
+                if let onStandardError {
+                    callbackQueue.async { onStandardError(chunk) }
+                }
+            }
+
+            self.stateQueue.sync { self.activeProcess = nil }
+
+            let finalOutput = self.stateQueue.sync {
+                (stdout: capturedStdout, stderr: capturedStderr)
+            }
+            let manifestRoot = URL(fileURLWithPath: request.outputFolder).appendingPathComponent("_climate_liberator_engine", isDirectory: true)
+            let result = SimulationEngineExecutionResult(
+                mode: .climateLiberatorRuntimePreview,
+                engineLabel: SimulationEngineMode.climateLiberatorRuntimePreview.label,
+                terminationStatus: process.terminationStatus,
+                stdout: finalOutput.stdout,
+                stderr: finalOutput.stderr,
+                outputManifestURL: manifestRoot.appendingPathComponent("output_manifest.json"),
+                runManifestURL: manifestRoot.appendingPathComponent("run_manifest.json"),
+                runArtifactURL: manifestRoot.appendingPathComponent("run_artifact.json"),
+                artifactIndexURL: manifestRoot.appendingPathComponent("artifact_index.json")
+            )
+
+            DispatchQueue.main.async {
+                if process.terminationStatus == 0 {
+                    completion(.success(result))
+                } else {
+                    let message = result.stderr.isEmpty
+                        ? "\(SimulationEngineMode.climateLiberatorRuntimePreview.label) exited with code \(process.terminationStatus)"
+                        : result.stderr
+                    completion(.failure(Cell2FireRunner.RunnerError(message: message)))
+                }
+            }
+        }
+    }
+}
+
+final class HybridSimulationEngineAdapter: SimulationEngineServicing {
+    private let legacyAdapter: SimulationEngineServicing
+    private let nativeAdapter: SimulationEngineServicing
+    private let stateQueue = DispatchQueue(label: "com.climateliberator.simulation-engine.hybrid-state", qos: .utility)
+    private var activeMode: SimulationEngineMode = .legacyCell2Fire
+
+    init(legacyAdapter: SimulationEngineServicing = LegacyCell2FireEngineAdapter(),
+         nativeAdapter: SimulationEngineServicing = ClimateLiberatorEngineAdapter()) {
+        self.legacyAdapter = legacyAdapter
+        self.nativeAdapter = nativeAdapter
+    }
+
+    func cancel() {
+        let mode = stateQueue.sync { activeMode }
+        switch mode {
+        case .legacyCell2Fire:
+            legacyAdapter.cancel()
+        case .climateLiberatorRuntimePreview:
+            nativeAdapter.cancel()
+        }
+    }
+
+    func run(request: SimulationEngineRequest,
+             onStandardOutput: ((String) -> Void)?,
+             onStandardError: ((String) -> Void)?,
+             completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
+        stateQueue.sync { activeMode = request.mode }
+        switch request.mode {
+        case .legacyCell2Fire:
+            legacyAdapter.run(request: request,
+                              onStandardOutput: onStandardOutput,
+                              onStandardError: onStandardError,
+                              completion: completion)
+        case .climateLiberatorRuntimePreview:
+            nativeAdapter.run(request: request,
+                              onStandardOutput: onStandardOutput,
+                              onStandardError: onStandardError,
+                              completion: completion)
+        }
+    }
+}
+
 struct SimulationOutputTreeService: SimulationOutputTreeServicing, Sendable {
     nonisolated func buildOutputTree(rateOfSpreadBase: String?,
                                      earthEngineOverlaysDirectory: URL?,

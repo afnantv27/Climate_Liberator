@@ -15,6 +15,7 @@ struct ContentView: View {
     @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
     @AppStorage("climateliberator.outputFolder") private var outputFolder = ""
     @AppStorage("climateliberator.theme") private var theme: ThemeStyle = .night
+    @AppStorage("climateliberator.engineMode") private var engineModeRaw = SimulationEngineMode.legacyCell2Fire.rawValue
 
     @State private var showingFolderPicker = false
     @State private var showingOutputPicker = false
@@ -62,7 +63,7 @@ struct ContentView: View {
     @available(macOS, introduced: 10.8, deprecated: 26)
     private let legacyFallbackGeocoder = CLGeocoder()
 
-    private let runner = Cell2FireRunner()
+    private let simulationEngineService: SimulationEngineServicing
     private let artifactService: SimulationArtifactServicing
     private let runConfigService: SimulationRunConfigServicing
     private let reviewDiscoveryService: SimulationReviewDiscoveryServicing
@@ -80,6 +81,7 @@ struct ContentView: View {
     init(scenarioStore: ScenarioLibraryStore,
          reviewStore: TCFDReviewStore,
          forecastStore: ForecastIntelligenceStore,
+         simulationEngineService: SimulationEngineServicing = HybridSimulationEngineAdapter(),
          artifactService: SimulationArtifactServicing = SimulationArtifactService(),
          runConfigService: SimulationRunConfigServicing = SimulationRunConfigService(),
          reviewDiscoveryService: SimulationReviewDiscoveryServicing = SimulationReviewDiscoveryService(),
@@ -88,6 +90,7 @@ struct ContentView: View {
         _reviewStore = ObservedObject(wrappedValue: reviewStore)
         _forecastStore = ObservedObject(wrappedValue: forecastStore)
         _outputStore = StateObject(wrappedValue: SimulationOutputStore(treeService: outputTreeService))
+        self.simulationEngineService = simulationEngineService
         self.artifactService = artifactService
         self.runConfigService = runConfigService
         self.reviewDiscoveryService = reviewDiscoveryService
@@ -102,6 +105,11 @@ struct ContentView: View {
     private var rosPalette: RateOfSpreadPalette {
         get { RateOfSpreadPalette(rawValue: rosPaletteRawValue) ?? .terrain }
         set { rosPaletteRawValue = newValue.rawValue }
+    }
+
+    private var simulationEngineMode: SimulationEngineMode {
+        get { SimulationEngineMode(rawValue: engineModeRaw) ?? .legacyCell2Fire }
+        set { engineModeRaw = newValue.rawValue }
     }
 
     private var rosPaletteBinding: Binding<RateOfSpreadPalette> {
@@ -1047,7 +1055,7 @@ struct ContentView: View {
             simulationSettings
 
             HStack(spacing: 12) {
-                Button(simulationState.isRunning ? "Running…" : "Run Cell2Fire") {
+                Button(simulationState.isRunning ? "Running…" : "Run Simulation") {
                     run()
                 }
                 .disabled(!runActionAvailability.isEnabled)
@@ -1056,8 +1064,8 @@ struct ContentView: View {
 
                 if simulationState.isRunning {
                     Button("Stop Run") {
-                        runner.cancel()
-                        appendToLog("[Run] Stop requested. Waiting for Cell2Fire to terminate.")
+                        simulationEngineService.cancel()
+                        appendToLog("[Run] Stop requested. Waiting for the active simulation engine to terminate.")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
@@ -2422,7 +2430,7 @@ struct ContentView: View {
         }
 
         simulationState.logFileURL = prepareLogFile()
-        simulationState.log = "Starting Cell2Fire…\n"
+        simulationState.log = "Starting \(simulationEngineMode.label)…\n"
         resetLogFile(with: simulationState.log)
 
         let trimmedOutput = outputFolder.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2466,25 +2474,36 @@ struct ContentView: View {
             seed: simulationState.seedValue
         )
 
-        runner.run(binaryPath: normalizedBinary,
-                   sim: simulationState.selectedSim,
-                   inputFolder: normalizedInput,
-                   includeRos: simulationState.includeRos,
-                   weatherPeriodMinutes: simulationState.weatherPeriodMinutes,
-                   outputFolder: outputArgument,
-                   numberOfSimulations: simulationState.numberOfSimulations,
-                   numberOfThreads: simulationState.numberOfThreads,
-                   seed: simulationState.seedValue,
-                   onStandardOutput: { chunk in
-                       appendToLog(chunk)
-                   },
-                   onStandardError: { chunk in
-                       appendToLog("[stderr] \(chunk)")
-                   }) { result in
+        let request = SimulationEngineRequest(
+            mode: simulationEngineMode,
+            legacyBinaryPath: normalizedBinary,
+            simulatorCode: simulationState.selectedSim,
+            inputFolder: normalizedInput,
+            outputFolder: outputArgument,
+            includeROS: simulationState.includeRos,
+            weatherPeriodMinutes: simulationState.weatherPeriodMinutes,
+            firePeriodLength: 1.0,
+            outputFormat: simulationState.outputFormat,
+            numberOfSimulations: simulationState.numberOfSimulations,
+            numberOfThreads: simulationState.numberOfThreads,
+            seed: simulationState.seedValue
+        )
+
+        simulationEngineService.run(request: request,
+                                    onStandardOutput: { chunk in
+                                        appendToLog(chunk)
+                                    },
+                                    onStandardError: { chunk in
+                                        appendToLog("[stderr] \(chunk)")
+                                    }) { result in
             simulationState.isRunning = false
             switch result {
             case .success(let output):
+                appendToLog("[Engine] Completed with \(output.engineLabel).\n")
                 appendToLog("Exit code: \(output.terminationStatus)\n")
+                if let runArtifactURL = output.runArtifactURL {
+                    appendToLog("[Artifact] Run artifact: \(runArtifactURL.path)\n")
+                }
                 appendOutputTailIfNeeded(from: output.stdout)
                 simulationState.hasSuccessfulRun = true
                 simulationState.lastOutputDirectory = resolvedOutputDir
