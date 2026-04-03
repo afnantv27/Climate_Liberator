@@ -8,6 +8,15 @@ doxygen Doxyfile
 
 The generated files will be saved to the docs directory.
 
+## Enterprise docs
+
+The main enterprise-readiness references now live alongside the engineering docs:
+
+- `enterprise-readiness-plan.md`
+- `sli-slo-catalog.md`
+- `production-optimization-roadmap.md`
+- `qa-benchmark-report.md`
+
 ## Prerequisites
 
 Ensure you have Doxygen installed on your system. You can find installation instructions in

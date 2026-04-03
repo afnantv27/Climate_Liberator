@@ -63,6 +63,7 @@ struct ContentView: View {
     @available(macOS, introduced: 10.8, deprecated: 26)
     private let legacyFallbackGeocoder = CLGeocoder()
 
+    private let enterprisePlatform: ClimateLiberatorEnterprisePlatform
     private let simulationEngineService: SimulationEngineServicing
     private let artifactService: SimulationArtifactServicing
     private let runConfigService: SimulationRunConfigServicing
@@ -81,7 +82,8 @@ struct ContentView: View {
     init(scenarioStore: ScenarioLibraryStore,
          reviewStore: TCFDReviewStore,
          forecastStore: ForecastIntelligenceStore,
-         simulationEngineService: SimulationEngineServicing = HybridSimulationEngineAdapter(),
+         enterprisePlatform: ClimateLiberatorEnterprisePlatform = .localDefault(),
+         simulationEngineService: SimulationEngineServicing? = nil,
          artifactService: SimulationArtifactServicing = SimulationArtifactService(),
          runConfigService: SimulationRunConfigServicing = SimulationRunConfigService(),
          reviewDiscoveryService: SimulationReviewDiscoveryServicing = SimulationReviewDiscoveryService(),
@@ -90,7 +92,8 @@ struct ContentView: View {
         _reviewStore = ObservedObject(wrappedValue: reviewStore)
         _forecastStore = ObservedObject(wrappedValue: forecastStore)
         _outputStore = StateObject(wrappedValue: SimulationOutputStore(treeService: outputTreeService))
-        self.simulationEngineService = simulationEngineService
+        self.enterprisePlatform = enterprisePlatform
+        self.simulationEngineService = simulationEngineService ?? enterprisePlatform.simulationEngine
         self.artifactService = artifactService
         self.runConfigService = runConfigService
         self.reviewDiscoveryService = reviewDiscoveryService

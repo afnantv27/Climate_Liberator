@@ -236,6 +236,141 @@ final class ClimateLiberatorTests: XCTestCase {
         XCTAssertEqual(overview?.occupancyMix.first?.code, "UTILITY")
         XCTAssertEqual(overview?.sampleLocations.first?.name, "Substation Delta")
     }
+
+    func testEnterpriseObjectiveCatalogDefinesReferenceSLOsAndCapacity() {
+        let objectives = EnterpriseObjectiveCatalog.serviceLevelObjectives
+        let availability = EnterpriseObjectiveCatalog.availabilityObjectives
+        let capacity = EnterpriseObjectiveCatalog.referenceCapacity
+
+        XCTAssertTrue(objectives.contains {
+            $0.surface == .dashboard &&
+            $0.metricClass == .interactiveRequest &&
+            $0.percentile == .p95 &&
+            $0.targetMilliseconds == 800
+        })
+        XCTAssertTrue(objectives.contains {
+            $0.surface == .simulation &&
+            $0.metricClass == .asyncJobSubmission &&
+            $0.percentile == .p95 &&
+            $0.targetMilliseconds == 1_000
+        })
+        XCTAssertTrue(availability.contains {
+            $0.surface == .platform && $0.targetPercent == 99.9
+        })
+        XCTAssertEqual(capacity.concurrentAnalysts, 50)
+        XCTAssertEqual(capacity.committedAssetCount, 100_000)
+        XCTAssertEqual(capacity.validatedStretchDisclosureBundles, 2_000)
+    }
+
+    func testEnterpriseServiceLevelReportBuilderComputesPercentiles() {
+        let samples: [EnterpriseLatencySample] = [
+            .init(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 100, success: true),
+            .init(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 200, success: true),
+            .init(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 300, success: false),
+            .init(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 400, success: true),
+            .init(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 500, success: true)
+        ]
+
+        let report = EnterpriseServiceLevelReportBuilder().build(from: samples).first
+
+        XCTAssertEqual(report?.sampleCount, 5)
+        XCTAssertEqual(report?.p50Milliseconds, 300)
+        XCTAssertEqual(report?.p95Milliseconds, 500)
+        XCTAssertEqual(report?.p99Milliseconds, 500)
+        XCTAssertNotNil(report)
+        XCTAssertEqual(report?.successRate ?? 0, 0.8, accuracy: 0.0001)
+    }
+
+    func testDisclosureBundleServiceCountsRunManifestsInsideClimateLiberatorBundleRoot() throws {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let bundleRoot = tempRoot.appendingPathComponent("_climateliberator", isDirectory: true)
+        let runOne = bundleRoot.appendingPathComponent("run-001", isDirectory: true)
+        let runTwo = bundleRoot.appendingPathComponent("run-002", isDirectory: true)
+        try FileManager.default.createDirectory(at: runOne, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: runTwo, withIntermediateDirectories: true)
+        try "{}".write(to: runOne.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+        try "{}".write(to: runTwo.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+
+        let service = LocalDisclosureBundleService()
+        let inventory = service.inventory(for: tempRoot.path)
+
+        XCTAssertEqual(inventory.roots, [bundleRoot])
+        XCTAssertEqual(inventory.runManifestCount, 2)
+    }
+
+    func testObservedSimulationEngineRecordsTelemetryAndArtifacts() {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let telemetryRoot = tempRoot.appendingPathComponent("observability", isDirectory: true)
+        let registryRoot = tempRoot.appendingPathComponent("artifact-registry", isDirectory: true)
+        let outputRoot = tempRoot.appendingPathComponent("output", isDirectory: true)
+        try? FileManager.default.createDirectory(at: outputRoot, withIntermediateDirectories: true)
+
+        let manifestURL = outputRoot.appendingPathComponent("output_manifest.json")
+        let runArtifactURL = outputRoot.appendingPathComponent("run_artifact.json")
+        try? "{}".write(to: manifestURL, atomically: true, encoding: .utf8)
+        try? "{}".write(to: runArtifactURL, atomically: true, encoding: .utf8)
+
+        let recorder = FileEnterpriseObservabilityRecorder(directoryURL: telemetryRoot)
+        let registry = FileArtifactRegistryService(directoryURL: registryRoot)
+        let engine = EnterpriseObservedSimulationEngineService(
+            base: FakeSimulationEngineService(
+                result: .success(
+                    SimulationEngineExecutionResult(
+                        mode: .climateLiberatorRuntimePreview,
+                        engineLabel: "Climate Liberator Runtime preview",
+                        terminationStatus: 0,
+                        stdout: "native ok",
+                        stderr: "",
+                        outputManifestURL: manifestURL,
+                        runManifestURL: manifestURL,
+                        runArtifactURL: runArtifactURL,
+                        artifactIndexURL: outputRoot.appendingPathComponent("artifact_index.json")
+                    )
+                )
+            ),
+            artifactRegistry: registry,
+            observability: recorder
+        )
+
+        let expectation = expectation(description: "simulation completes")
+        let request = SimulationEngineRequest(
+            mode: .climateLiberatorRuntimePreview,
+            legacyBinaryPath: "/tmp/Cell2Fire",
+            simulatorCode: "S",
+            inputFolder: "/tmp/input",
+            outputFolder: outputRoot.path,
+            includeROS: true,
+            weatherPeriodMinutes: 60,
+            firePeriodLength: 60,
+            outputFormat: .asc,
+            numberOfSimulations: 1,
+            numberOfThreads: 2,
+            seed: 42
+        )
+
+        engine.run(request: request, onStandardOutput: nil, onStandardError: nil) { result in
+            switch result {
+            case .success(let execution):
+                XCTAssertEqual(execution.engineLabel, "Climate Liberator Runtime preview")
+            case .failure(let error):
+                XCTFail("Observed simulation wrapper returned failure: \(error.localizedDescription)")
+            }
+            expectation.fulfill()
+        }
+
+        waitForExpectations(timeout: 2)
+
+        let samples = recorder.recentSamples(limit: 10)
+        XCTAssertTrue(samples.contains { $0.metricClass == .asyncJobSubmission })
+        XCTAssertTrue(samples.contains { $0.metricClass == .asyncJobQueueStart })
+        XCTAssertTrue(samples.contains { $0.metricClass == .asyncJobCompletion && $0.success })
+        XCTAssertTrue(samples.contains { $0.metricClass == .artifactGeneration && $0.success })
+
+        let records = registry.loadRecords(kind: .simulation)
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.engineLabel, "Climate Liberator Runtime preview")
+        XCTAssertEqual(records.first?.outputDirectory, outputRoot.path)
+    }
 }
 
 private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore {
@@ -249,6 +384,19 @@ private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore
 
     func loadSnapshots() -> [ForecastEvidenceSnapshot] {
         snapshots
+    }
+}
+
+private struct FakeSimulationEngineService: SimulationEngineServicing {
+    let result: Result<SimulationEngineExecutionResult, Error>
+
+    func cancel() {}
+
+    func run(request: SimulationEngineRequest,
+             onStandardOutput: ((String) -> Void)?,
+             onStandardError: ((String) -> Void)?,
+             completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
+        completion(result)
     }
 }
 
