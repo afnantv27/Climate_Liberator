@@ -92,6 +92,35 @@ Monthly enterprise reporting should include:
 - artifact registration failure rate
 - top regression surfaces
 
+## Contract-to-Metric Mapping
+
+- `interactiveRequest`
+  - dashboard summary reads
+  - portfolio status and nearby lookup reads
+  - disclosure inventory reads when used as an interactive summary operation
+- `asyncJobSubmission`
+  - simulation submission acknowledgment
+- `asyncJobQueueStart`
+  - transition from accepted/queued to running once worker orchestration exists
+- `asyncJobCompletion`
+  - end-to-end simulation completion result
+- `artifactFetch`
+  - grouped portfolio rollups
+  - forecast artifact and trust retrieval
+  - disclosure bundle discovery and hydration
+  - artifact manifest reads
+- `artifactGeneration`
+  - artifact registration after simulation completion
+
+## Simulation Lifecycle Measurement Boundaries
+
+- submission SLA is measured at `accepted`
+- queue-start SLA is measured at first transition to `running`
+- completion SLA is measured at the final job completion state
+- artifact-registration SLA is measured at `registeringArtifacts -> completed`
+
+The current app repo has local contract types for submission acknowledgment and status lookup, but full queue/worker lifecycle enforcement remains a later phase.
+
 ## Current Implementation Note
 
 The app repo currently records enterprise latency samples and artifact registry entries locally. This is a foundation step for:
@@ -100,3 +129,12 @@ The app repo currently records enterprise latency samples and artifact registry 
 - service-level reporting
 - workload benchmarking
 - proving-window readiness
+
+The app repo also now exposes explicit local control-plane request/response contracts for:
+
+- dashboard
+- portfolio
+- forecast
+- simulation status
+- artifact manifests
+- disclosure inventory

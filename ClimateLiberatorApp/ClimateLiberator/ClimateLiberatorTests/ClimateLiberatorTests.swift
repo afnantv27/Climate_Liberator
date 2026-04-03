@@ -548,16 +548,31 @@ final class ClimateLiberatorTests: XCTestCase {
                                      manifestURL: runRoot.appendingPathComponent("run_manifest.json").path,
                                      artifactURL: nil)
         ])
+        let portfolioQueries = LocalPortfolioQueryService()
+        let forecastArtifacts = LocalForecastArtifactService(repository: EmptyForecastFeedRepository(),
+                                                             evidenceManager: ForecastEvidencePromotionManager(snapshotStore: InMemoryForecastSnapshotStore()))
+        let disclosureBundles = LocalDisclosureBundleService()
         let platform = ClimateLiberatorEnterprisePlatform(
             availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
             serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
             referenceCapacity: EnterpriseObjectiveCatalog.referenceCapacity,
             observability: recorder,
             artifactRegistry: registry,
-            portfolioQueries: LocalPortfolioQueryService(),
-            forecastArtifacts: LocalForecastArtifactService(repository: EmptyForecastFeedRepository(),
-                                                           evidenceManager: ForecastEvidencePromotionManager(snapshotStore: InMemoryForecastSnapshotStore())),
-            disclosureBundles: LocalDisclosureBundleService(),
+            portfolioQueries: portfolioQueries,
+            forecastArtifacts: forecastArtifacts,
+            disclosureBundles: disclosureBundles,
+            dashboard: LocalEnterpriseDashboardService(
+                availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
+                serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
+                observability: recorder,
+                artifactRegistry: registry,
+                disclosureBundles: disclosureBundles
+            ),
+            portfolio: LocalEnterprisePortfolioService(base: portfolioQueries),
+            forecast: LocalEnterpriseForecastService(base: forecastArtifacts),
+            simulationStatus: LocalEnterpriseSimulationStatusService(artifactRegistry: registry),
+            artifactManifests: LocalEnterpriseArtifactManifestService(artifactRegistry: registry),
+            disclosure: LocalEnterpriseDisclosureBundleClient(base: disclosureBundles),
             simulationEngine: FakeSimulationEngineService(result: .failure(NSError(domain: "test", code: 1)))
         )
 
@@ -568,6 +583,198 @@ final class ClimateLiberatorTests: XCTestCase {
         XCTAssertEqual(summary.latestSimulationEngineLabel, "Climate Liberator Runtime preview")
         XCTAssertEqual(summary.measuredSurfaceCount, 2)
         XCTAssertTrue(summary.surfaceReadiness.contains { $0.surface == .dashboard && $0.healthLabel == "Healthy" })
+    }
+
+    func testEnterpriseDashboardServiceReturnsExplicitSummaryContract() throws {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let outputRoot = tempRoot.appendingPathComponent("output", isDirectory: true)
+        let bundleRoot = outputRoot.appendingPathComponent("_climateliberator/run-001", isDirectory: true)
+        try FileManager.default.createDirectory(at: bundleRoot, withIntermediateDirectories: true)
+        try "{}".write(to: bundleRoot.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+
+        let recorder = InMemoryEnterpriseObservabilityRecorder(samples: [
+            EnterpriseLatencySample(surface: .dashboard, metricClass: .interactiveRequest, durationMilliseconds: 280, success: true),
+            EnterpriseLatencySample(surface: .artifactRegistry, metricClass: .artifactGeneration, durationMilliseconds: 900, success: true)
+        ])
+        let registry = InMemoryArtifactRegistryService(records: [
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     engineLabel: "Climate Liberator Runtime preview",
+                                     runID: "run-001",
+                                     outputDirectory: outputRoot.path,
+                                     manifestURL: bundleRoot.appendingPathComponent("run_manifest.json").path,
+                                     artifactURL: bundleRoot.appendingPathComponent("run_artifact.json").path)
+        ])
+
+        let service = LocalEnterpriseDashboardService(
+            availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
+            serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
+            observability: recorder,
+            artifactRegistry: registry,
+            disclosureBundles: LocalDisclosureBundleService()
+        )
+
+        let response = service.fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputRoot.path, sampleLimit: 10))
+
+        XCTAssertEqual(response.activeArtifactCount, 1)
+        XCTAssertEqual(response.disclosureManifestCount, 1)
+        XCTAssertEqual(response.latestSimulationEngineLabel, "Climate Liberator Runtime preview")
+        XCTAssertEqual(response.coverageLabel, "2/7 surfaces measured")
+        XCTAssertTrue(response.surfaceReadiness.contains { $0.surface == .dashboard && $0.healthLabel == "Healthy" })
+    }
+
+    func testEnterpriseArtifactManifestServiceFiltersLatestSimulationRecord() {
+        let oldRecord = EnterpriseArtifactRecord(kind: .simulation,
+                                                 recordedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                                                 engineLabel: "Legacy Cell2Fire backend",
+                                                 runID: "run-001",
+                                                 outputDirectory: "/tmp/output",
+                                                 manifestURL: "/tmp/output/old_output_manifest.json",
+                                                 artifactURL: "/tmp/output/old_run_artifact.json")
+        let newRecord = EnterpriseArtifactRecord(kind: .simulation,
+                                                 recordedAt: Date(timeIntervalSince1970: 1_700_000_600),
+                                                 engineLabel: "Climate Liberator Runtime preview",
+                                                 runID: "run-002",
+                                                 outputDirectory: "/tmp/output",
+                                                 manifestURL: "/tmp/output/output_manifest.json",
+                                                 artifactURL: "/tmp/output/run_artifact.json")
+        let registry = InMemoryArtifactRegistryService(records: [oldRecord, newRecord])
+        let service = LocalEnterpriseArtifactManifestService(artifactRegistry: registry)
+
+        let response = service.fetchManifests(request: EnterpriseArtifactManifestRequest(kind: .simulation,
+                                                                                         outputDirectory: "/tmp/output",
+                                                                                         latestOnly: true))
+
+        XCTAssertEqual(response.records.count, 1)
+        XCTAssertEqual(response.records.first?.runID, "run-002")
+        XCTAssertEqual(response.records.first?.engineLabel, "Climate Liberator Runtime preview")
+    }
+
+    func testEnterpriseSimulationStatusServiceInfersStatusFromArtifactRegistry() {
+        let registry = InMemoryArtifactRegistryService(records: [
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     recordedAt: Date(timeIntervalSince1970: 1_700_000_900),
+                                     engineLabel: "Climate Liberator Runtime preview",
+                                     runID: "run-101",
+                                     outputDirectory: "/tmp/output-101",
+                                     manifestURL: "/tmp/output-101/output_manifest.json",
+                                     artifactURL: "/tmp/output-101/run_artifact.json",
+                                     metadata: [
+                                        "correlation_id": "corr-101",
+                                        "termination_status": "0"
+                                     ])
+        ])
+        let service = LocalEnterpriseSimulationStatusService(artifactRegistry: registry)
+
+        let response = service.fetchStatus(request: EnterpriseSimulationStatusRequest(correlationID: "corr-101"))
+        let unknown = service.fetchStatus(request: EnterpriseSimulationStatusRequest(correlationID: "missing"))
+
+        XCTAssertEqual(response.status, .completed)
+        XCTAssertEqual(response.runID, "run-101")
+        XCTAssertEqual(response.outputManifestURL, "/tmp/output-101/output_manifest.json")
+        XCTAssertEqual(response.correlationID, "corr-101")
+        XCTAssertEqual(unknown.status, .unknown)
+    }
+
+    func testEnterpriseDashboardServiceHonorsSampleLimitInSummaryRequest() {
+        let recorder = InMemoryEnterpriseObservabilityRecorder(samples: [
+            EnterpriseLatencySample(surface: .dashboard, metricClass: .interactiveRequest, durationMilliseconds: 180, success: true),
+            EnterpriseLatencySample(surface: .dashboard, metricClass: .interactiveRequest, durationMilliseconds: 220, success: true),
+            EnterpriseLatencySample(surface: .portfolio, metricClass: .interactiveRequest, durationMilliseconds: 260, success: true)
+        ])
+        let service = LocalEnterpriseDashboardService(
+            availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
+            serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
+            observability: recorder,
+            artifactRegistry: InMemoryArtifactRegistryService(),
+            disclosureBundles: StaticDisclosureBundleService(inventory: DisclosureBundleInventory(roots: [], runManifestCount: 0))
+        )
+
+        let response = service.fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: "/tmp/output", sampleLimit: 1))
+
+        XCTAssertEqual(response.measuredSurfaceCount, 1)
+        XCTAssertEqual(response.coverageLabel, "1/7 surfaces measured")
+        XCTAssertTrue(response.surfaceReadiness.contains {
+            $0.surface == .portfolio &&
+            $0.latestReport?.sampleCount == 1 &&
+            $0.healthLabel == "Healthy"
+        })
+        XCTAssertTrue(response.surfaceReadiness.contains { $0.surface == .dashboard && $0.healthLabel == "Unmeasured" })
+    }
+
+    func testEnterpriseArtifactManifestServiceFiltersByRunIDAndOutputDirectory() {
+        let registry = InMemoryArtifactRegistryService(records: [
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     recordedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                                     engineLabel: "Legacy Cell2Fire backend",
+                                     runID: "run-001",
+                                     outputDirectory: "/tmp/output-a",
+                                     manifestURL: "/tmp/output-a/output_manifest.json",
+                                     artifactURL: "/tmp/output-a/run_artifact.json"),
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     recordedAt: Date(timeIntervalSince1970: 1_700_000_600),
+                                     engineLabel: "Climate Liberator Runtime preview",
+                                     runID: "run-002",
+                                     outputDirectory: "/tmp/output-b",
+                                     manifestURL: "/tmp/output-b/output_manifest.json",
+                                     artifactURL: "/tmp/output-b/run_artifact.json"),
+            EnterpriseArtifactRecord(kind: .forecast,
+                                     recordedAt: Date(timeIntervalSince1970: 1_700_000_800),
+                                     outputDirectory: "/tmp/output-b",
+                                     manifestURL: "/tmp/output-b/forecast_overview.json",
+                                     artifactURL: nil)
+        ])
+        let service = LocalEnterpriseArtifactManifestService(artifactRegistry: registry)
+
+        let response = service.fetchManifests(request: EnterpriseArtifactManifestRequest(kind: .simulation,
+                                                                                         runID: "run-002",
+                                                                                         outputDirectory: "/tmp/output-b"))
+
+        XCTAssertEqual(response.records.count, 1)
+        XCTAssertEqual(response.records.first?.runID, "run-002")
+        XCTAssertEqual(response.records.first?.outputDirectory, "/tmp/output-b")
+        XCTAssertEqual(response.records.first?.manifestURL, "/tmp/output-b/output_manifest.json")
+    }
+
+    func testEnterpriseSimulationStatusServiceMarksNonZeroTerminationAsFailed() {
+        let registry = InMemoryArtifactRegistryService(records: [
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     recordedAt: Date(timeIntervalSince1970: 1_700_001_200),
+                                     engineLabel: "Climate Liberator Runtime preview",
+                                     runID: "run-201",
+                                     outputDirectory: "/tmp/output-201",
+                                     manifestURL: "/tmp/output-201/output_manifest.json",
+                                     artifactURL: "/tmp/output-201/run_artifact.json",
+                                     metadata: [
+                                        "correlation_id": "corr-201",
+                                        "termination_status": "7"
+                                     ])
+        ])
+        let service = LocalEnterpriseSimulationStatusService(artifactRegistry: registry)
+
+        let response = service.fetchStatus(request: EnterpriseSimulationStatusRequest(outputDirectory: "/tmp/output-201"))
+
+        XCTAssertEqual(response.status, .failed)
+        XCTAssertEqual(response.runID, "run-201")
+        XCTAssertEqual(response.correlationID, "corr-201")
+        XCTAssertEqual(response.outputManifestURL, "/tmp/output-201/output_manifest.json")
+        XCTAssertEqual(response.artifactURL, "/tmp/output-201/run_artifact.json")
+    }
+
+    func testEnterpriseDisclosureBundleClientReturnsInventoryResponse() throws {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let bundleRoot = tempRoot.appendingPathComponent("_climateliberator", isDirectory: true)
+        let runOne = bundleRoot.appendingPathComponent("run-001", isDirectory: true)
+        let runTwo = bundleRoot.appendingPathComponent("run-002", isDirectory: true)
+        try FileManager.default.createDirectory(at: runOne, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: runTwo, withIntermediateDirectories: true)
+        try "{}".write(to: runOne.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+        try "{}".write(to: runTwo.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+
+        let client = LocalEnterpriseDisclosureBundleClient(base: LocalDisclosureBundleService())
+        let response = client.fetchBundles(request: EnterpriseDisclosureBundleRequest(outputFolder: tempRoot.path))
+
+        XCTAssertEqual(response.inventory.roots, [bundleRoot])
+        XCTAssertEqual(response.inventory.runManifestCount, 2)
     }
 }
 
@@ -637,6 +844,18 @@ private final class InMemoryArtifactRegistryService: ArtifactRegistryServicing {
     func loadRecords(kind: EnterpriseArtifactKind?) -> [EnterpriseArtifactRecord] {
         guard let kind else { return records }
         return records.filter { $0.kind == kind }
+    }
+}
+
+private struct StaticDisclosureBundleService: DisclosureBundleServicing {
+    let inventory: DisclosureBundleInventory
+
+    func discoveryRoots(for outputFolder: String) -> [URL] {
+        inventory.roots
+    }
+
+    func inventory(for outputFolder: String) -> DisclosureBundleInventory {
+        inventory
     }
 }
 

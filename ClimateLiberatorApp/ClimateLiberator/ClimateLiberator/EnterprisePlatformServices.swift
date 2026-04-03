@@ -662,51 +662,46 @@ struct ClimateLiberatorEnterprisePlatform {
     let portfolioQueries: PortfolioQueryServicing
     let forecastArtifacts: ForecastArtifactServicing
     let disclosureBundles: DisclosureBundleServicing
+    let dashboard: EnterpriseDashboardServicing
+    let portfolio: EnterprisePortfolioServicing
+    let forecast: EnterpriseForecastServicing
+    let simulationStatus: EnterpriseSimulationStatusServicing
+    let artifactManifests: EnterpriseArtifactManifestServicing
+    let disclosure: EnterpriseDisclosureBundleClientServicing
     let simulationEngine: SimulationEngineServicing
 
     func readinessSummary(outputFolder: String) -> EnterpriseReadinessSummary {
-        let samples = observability.recentSamples(limit: 500)
-        let reports = EnterpriseServiceLevelReportBuilder().build(from: samples)
-        let surfaces = EnterpriseSurface.allCases
-        let surfaceReadiness = surfaces.map { surface in
-            EnterpriseSurfaceReadiness(
-                surface: surface,
-                latestReport: reports.first(where: { $0.surface == surface }),
-                objectiveCount: serviceLevelObjectives.filter { $0.surface == surface }.count
-            )
-        }
-        let artifacts = artifactRegistry.loadRecords(kind: nil)
-        let disclosureInventory = disclosureBundles.inventory(for: outputFolder)
-        let latestSimulationRecord = artifacts
-            .filter { $0.kind == .simulation }
-            .sorted { $0.recordedAt > $1.recordedAt }
-            .first
-
-        return EnterpriseReadinessSummary(
-            generatedAt: Date(),
-            measuredSurfaceCount: Set(reports.map(\.surface)).count,
-            totalSurfaceCount: surfaces.count,
-            availabilityObjectiveCount: availabilityObjectives.count,
-            serviceLevelObjectiveCount: serviceLevelObjectives.count,
-            activeArtifactCount: artifacts.count,
-            disclosureManifestCount: disclosureInventory.runManifestCount,
-            latestSimulationEngineLabel: latestSimulationRecord?.engineLabel,
-            surfaceReadiness: surfaceReadiness
-        )
+        dashboard.fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputFolder)).readinessSummary
     }
 
     static func localDefault(baseSimulationEngine: SimulationEngineServicing = HybridSimulationEngineAdapter()) -> ClimateLiberatorEnterprisePlatform {
         let observability = FileEnterpriseObservabilityRecorder()
         let artifactRegistry = FileArtifactRegistryService()
+        let portfolioQueries = LocalPortfolioQueryService()
+        let forecastArtifacts = LocalForecastArtifactService()
+        let disclosureBundles = LocalDisclosureBundleService()
+
         return ClimateLiberatorEnterprisePlatform(
             availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
             serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
             referenceCapacity: EnterpriseObjectiveCatalog.referenceCapacity,
             observability: observability,
             artifactRegistry: artifactRegistry,
-            portfolioQueries: LocalPortfolioQueryService(),
-            forecastArtifacts: LocalForecastArtifactService(),
-            disclosureBundles: LocalDisclosureBundleService(),
+            portfolioQueries: portfolioQueries,
+            forecastArtifacts: forecastArtifacts,
+            disclosureBundles: disclosureBundles,
+            dashboard: LocalEnterpriseDashboardService(
+                availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
+                serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
+                observability: observability,
+                artifactRegistry: artifactRegistry,
+                disclosureBundles: disclosureBundles
+            ),
+            portfolio: LocalEnterprisePortfolioService(base: portfolioQueries),
+            forecast: LocalEnterpriseForecastService(base: forecastArtifacts),
+            simulationStatus: LocalEnterpriseSimulationStatusService(artifactRegistry: artifactRegistry),
+            artifactManifests: LocalEnterpriseArtifactManifestService(artifactRegistry: artifactRegistry),
+            disclosure: LocalEnterpriseDisclosureBundleClient(base: disclosureBundles),
             simulationEngine: EnterpriseObservedSimulationEngineService(
                 base: baseSimulationEngine,
                 artifactRegistry: artifactRegistry,

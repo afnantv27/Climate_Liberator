@@ -70,6 +70,17 @@ The enterprise control plane should standardize on these simulation/runtime cont
 
 The app should progressively stop treating local paths and console output as the durable contract.
 
+The app-side enterprise façade now also defines explicit control-plane contracts for:
+
+- dashboard summary requests and responses
+- portfolio database status, nearby lookup, and OED export
+- forecast feed, support-feed, and snapshot retrieval
+- simulation submission acknowledgment and status lookup
+- artifact manifest retrieval
+- disclosure bundle inventory
+
+These are currently implemented as local adapters over the existing file-backed and SQLite-backed services. They are the transition seam, not yet a deployed remote API.
+
 ## SLO / SLA Targets
 
 Availability targets:
@@ -179,5 +190,29 @@ This repository now includes:
 - enterprise observability latency recording
 - a local artifact registry for simulation runs
 - a simulation-engine wrapper that records enterprise telemetry and artifact registration
+- explicit request/response contracts for dashboard, portfolio, forecast, simulation status, artifact manifests, and disclosure inventory
+- dashboard and executive workspace enterprise-readiness panels
+- hierarchy-aware cached India portfolio rollup snapshots
 
 This is the foundation layer, not the final enterprise deployment.
+
+## Simulation Job Lifecycle
+
+The target control-plane lifecycle for simulation work is:
+
+- `accepted`
+- `queued`
+- `preparingInputs`
+- `running`
+- `registeringArtifacts`
+- `completed`
+- `failed`
+- `cancelled`
+- `timedOut`
+
+The current app repo implements:
+
+- submission acknowledgment semantics
+- local status inference from the artifact registry
+
+It does not yet implement a true queue or worker system. The app should continue moving toward consuming explicit job states rather than inferring workflow state from local logs or folder discovery alone.

@@ -568,7 +568,10 @@ struct ContentView: View {
     }
 
     private var enterpriseReadinessSummary: EnterpriseReadinessSummary {
-        enterprisePlatform.readinessSummary(outputFolder: outputFolder)
+        enterprisePlatform
+            .dashboard
+            .fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputFolder))
+            .readinessSummary
     }
 
     private var intelligenceWorkspaceView: some View {
