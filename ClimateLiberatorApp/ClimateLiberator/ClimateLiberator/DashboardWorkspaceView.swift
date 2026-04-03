@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DashboardWorkspaceView: View {
+    let enterpriseReadiness: EnterpriseReadinessSummary
     let openClimateSimulation: () -> Void
     let openForecastIntelligence: () -> Void
     let openTCFDDashboard: () -> Void
@@ -91,6 +92,8 @@ struct DashboardWorkspaceView: View {
                         .frame(maxWidth: .infinity)
                     }
 
+                    enterpriseReadinessSection
+
                     secondarySection
                 }
                 .padding(.top, 112)
@@ -162,9 +165,88 @@ struct DashboardWorkspaceView: View {
         }
     }
 
+    private var enterpriseReadinessSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Enterprise Readiness")
+                    .font(.title3.bold())
+                    .foregroundColor(.white)
+                Spacer()
+                Text(enterpriseReadiness.coverageLabel)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(Color.white.opacity(0.68))
+            }
+
+            HStack(alignment: .top, spacing: 16) {
+                enterpriseMiniMetric(title: "SLO catalog", value: "\(enterpriseReadiness.serviceLevelObjectiveCount)", detail: "\(enterpriseReadiness.availabilityObjectiveCount) availability objectives")
+                enterpriseMiniMetric(title: "Artifacts indexed", value: "\(enterpriseReadiness.activeArtifactCount)", detail: "\(enterpriseReadiness.disclosureManifestCount) disclosure manifests discovered")
+                enterpriseMiniMetric(title: "Simulation backend", value: enterpriseReadiness.latestSimulationEngineLabel ?? "None", detail: "Latest registered simulation engine")
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(enterpriseReadiness.surfaceReadiness) { readiness in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(readiness.surface.displayLabel)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.white)
+                        Text(readiness.healthLabel)
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(readiness.healthColor)
+                        Text(readiness.detailLabel)
+                            .font(.caption)
+                            .foregroundColor(Color.white.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.055))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+        )
+    }
+
     private enum CardProminence {
         case primary
         case secondary
+    }
+
+    private func enterpriseMiniMetric(title: String, value: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(Color.white.opacity(0.72))
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(detail)
+                .font(.caption)
+                .foregroundColor(Color.white.opacity(0.66))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
     }
 
     private func dashboardToolCard(title: String,

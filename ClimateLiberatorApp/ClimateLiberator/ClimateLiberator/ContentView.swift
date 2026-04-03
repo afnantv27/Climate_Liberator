@@ -530,6 +530,7 @@ struct ContentView: View {
 
     private var dashboardWorkspaceView: some View {
         DashboardWorkspaceView(
+            enterpriseReadiness: enterpriseReadinessSummary,
             openClimateSimulation: {
                 activeWorkspace = .operations
             },
@@ -551,6 +552,7 @@ struct ContentView: View {
             forecastStore: forecastStore,
             activeWorkspace: $activeWorkspace,
             theme: theme,
+            enterpriseReadiness: enterpriseReadinessSummary,
             latestDisclosureReportAvailability: latestDisclosureReportAvailability,
             logActionAvailability: logActionAvailability,
             operationsWorkspaceAvailability: operationsWorkspaceAvailability,
@@ -563,6 +565,10 @@ struct ContentView: View {
                 simulationState.showLogSheet = true
             }
         )
+    }
+
+    private var enterpriseReadinessSummary: EnterpriseReadinessSummary {
+        enterprisePlatform.readinessSummary(outputFolder: outputFolder)
     }
 
     private var intelligenceWorkspaceView: some View {

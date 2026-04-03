@@ -7,6 +7,7 @@ struct CommandCenterWorkspaceView: View {
     @Binding var activeWorkspace: AppWorkspace
 
     let theme: ThemeStyle
+    let enterpriseReadiness: EnterpriseReadinessSummary
     let latestDisclosureReportAvailability: ActionAvailability
     let logActionAvailability: ActionAvailability
     let operationsWorkspaceAvailability: ActionAvailability
@@ -193,6 +194,45 @@ struct CommandCenterWorkspaceView: View {
                             Text("No disclosure package has been generated yet. Complete a simulation run from the operations workspace.")
                                 .font(.footnote)
                                 .foregroundColor(theme.subtleTextColor)
+                        }
+                    }
+
+                    dashboardPanelCard(title: "Enterprise Control Plane",
+                                       subtitle: "Current enterprise telemetry coverage, artifact indexing, and service readiness from the local platform façade.") {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack {
+                                compactDisclosureChip(title: "Coverage", value: enterpriseReadiness.coverageLabel)
+                                compactDisclosureChip(title: "Artifacts", value: "\(enterpriseReadiness.activeArtifactCount)")
+                                compactDisclosureChip(title: "Disclosure manifests", value: "\(enterpriseReadiness.disclosureManifestCount)")
+                            }
+
+                            if let latestSimulationEngineLabel = enterpriseReadiness.latestSimulationEngineLabel {
+                                Text("Latest simulation registry entry: \(latestSimulationEngineLabel)")
+                                    .font(.footnote)
+                                    .foregroundColor(theme.subtleTextColor)
+                            } else {
+                                Text("No simulation artifact has been registered through the enterprise artifact registry yet.")
+                                    .font(.footnote)
+                                    .foregroundColor(theme.subtleTextColor)
+                            }
+
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(enterpriseReadiness.surfaceReadiness.prefix(4)) { readiness in
+                                    HStack {
+                                        Text(readiness.surface.displayLabel)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Text(readiness.healthLabel)
+                                            .font(.caption.weight(.bold))
+                                            .foregroundColor(readiness.healthColor)
+                                        Text(readiness.detailLabel)
+                                            .font(.caption)
+                                            .foregroundColor(theme.subtleTextColor)
+                                            .lineLimit(1)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

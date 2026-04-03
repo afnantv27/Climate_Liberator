@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import SwiftUI
 
 enum EnterpriseSurface: String, Codable, CaseIterable, Hashable {
     case dashboard
@@ -141,6 +142,89 @@ struct EnterpriseServiceLevelReport: Identifiable, Hashable {
 
     var id: String {
         "\(surface.rawValue)-\(metricClass.rawValue)"
+    }
+}
+
+struct EnterpriseSurfaceReadiness: Identifiable, Hashable {
+    let surface: EnterpriseSurface
+    let latestReport: EnterpriseServiceLevelReport?
+    let objectiveCount: Int
+
+    var id: String {
+        surface.rawValue
+    }
+
+    var healthLabel: String {
+        guard let latestReport else { return "Unmeasured" }
+        if latestReport.successRate >= 0.99 {
+            return "Healthy"
+        }
+        if latestReport.successRate >= 0.95 {
+            return "Watch"
+        }
+        return "Degraded"
+    }
+}
+
+extension EnterpriseSurface {
+    var displayLabel: String {
+        switch self {
+        case .dashboard:
+            return "Dashboard"
+        case .portfolio:
+            return "Portfolio"
+        case .forecast:
+            return "Forecast"
+        case .simulation:
+            return "Simulation"
+        case .disclosure:
+            return "Disclosure"
+        case .artifactRegistry:
+            return "Artifacts"
+        case .platform:
+            return "Platform"
+        }
+    }
+}
+
+extension EnterpriseSurfaceReadiness {
+    var healthColor: Color {
+        switch healthLabel {
+        case "Healthy":
+            return .green
+        case "Watch":
+            return .yellow
+        case "Degraded":
+            return .red
+        default:
+            return .gray
+        }
+    }
+
+    var detailLabel: String {
+        if let latestReport {
+            return "p95 \(latestReport.p95Milliseconds) ms • success \(Int((latestReport.successRate * 100).rounded()))%"
+        }
+        if objectiveCount > 0 {
+            return "\(objectiveCount) objective(s) defined, awaiting telemetry"
+        }
+        return "No enterprise objective defined yet"
+    }
+}
+
+struct EnterpriseReadinessSummary: Hashable {
+    let generatedAt: Date
+    let measuredSurfaceCount: Int
+    let totalSurfaceCount: Int
+    let availabilityObjectiveCount: Int
+    let serviceLevelObjectiveCount: Int
+    let activeArtifactCount: Int
+    let disclosureManifestCount: Int
+    let latestSimulationEngineLabel: String?
+    let surfaceReadiness: [EnterpriseSurfaceReadiness]
+
+    var coverageLabel: String {
+        "\(measuredSurfaceCount)/\(totalSurfaceCount) surfaces measured"
     }
 }
 
@@ -579,6 +663,37 @@ struct ClimateLiberatorEnterprisePlatform {
     let forecastArtifacts: ForecastArtifactServicing
     let disclosureBundles: DisclosureBundleServicing
     let simulationEngine: SimulationEngineServicing
+
+    func readinessSummary(outputFolder: String) -> EnterpriseReadinessSummary {
+        let samples = observability.recentSamples(limit: 500)
+        let reports = EnterpriseServiceLevelReportBuilder().build(from: samples)
+        let surfaces = EnterpriseSurface.allCases
+        let surfaceReadiness = surfaces.map { surface in
+            EnterpriseSurfaceReadiness(
+                surface: surface,
+                latestReport: reports.first(where: { $0.surface == surface }),
+                objectiveCount: serviceLevelObjectives.filter { $0.surface == surface }.count
+            )
+        }
+        let artifacts = artifactRegistry.loadRecords(kind: nil)
+        let disclosureInventory = disclosureBundles.inventory(for: outputFolder)
+        let latestSimulationRecord = artifacts
+            .filter { $0.kind == .simulation }
+            .sorted { $0.recordedAt > $1.recordedAt }
+            .first
+
+        return EnterpriseReadinessSummary(
+            generatedAt: Date(),
+            measuredSurfaceCount: Set(reports.map(\.surface)).count,
+            totalSurfaceCount: surfaces.count,
+            availabilityObjectiveCount: availabilityObjectives.count,
+            serviceLevelObjectiveCount: serviceLevelObjectives.count,
+            activeArtifactCount: artifacts.count,
+            disclosureManifestCount: disclosureInventory.runManifestCount,
+            latestSimulationEngineLabel: latestSimulationRecord?.engineLabel,
+            surfaceReadiness: surfaceReadiness
+        )
+    }
 
     static func localDefault(baseSimulationEngine: SimulationEngineServicing = HybridSimulationEngineAdapter()) -> ClimateLiberatorEnterprisePlatform {
         let observability = FileEnterpriseObservabilityRecorder()
