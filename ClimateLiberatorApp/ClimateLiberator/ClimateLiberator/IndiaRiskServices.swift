@@ -25,6 +25,29 @@ struct IndiaDemoPortfolioFeedSnapshot {
     let trust: IndiaDemoPortfolioTrustSummary?
 }
 
+struct IndiaPortfolioHierarchySummary: Codable, Hashable, Identifiable {
+    let id: String
+    let level: String
+    let stateCode: String
+    let districtName: String?
+    let assetCount: Int
+    let highRiskCount: Int
+    let mediumRiskCount: Int
+    let lowRiskCount: Int
+    let averageBurnProbability: Double?
+}
+
+struct IndiaPortfolioRollupSnapshot: Codable, Hashable {
+    let databasePath: String
+    let databaseModifiedAt: Date?
+    let generatedAt: Date
+    let buildingCount: Int
+    let portfolioSummary: IndiaPortfolioRiskSummary
+    let topRiskConcentrations: [IndiaRiskConcentration]
+    let hierarchySummaries: [IndiaPortfolioHierarchySummary]
+    let statusMessage: String
+}
+
 enum IndiaRiskStoreError: LocalizedError {
     case databaseUnavailable
     case schemaIncomplete
@@ -59,6 +82,21 @@ protocol IndiaRiskExporting {
 
 protocol IndiaDemoFeedProviding {
     func loadDemoPortfolioFeeds() -> IndiaDemoPortfolioFeedSnapshot
+}
+
+protocol IndiaPortfolioRollupLoading {
+    func loadPortfolioRollupSnapshot(at path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot
+}
+
+protocol IndiaPortfolioRollupCaching {
+    func cachedRollupSnapshot(for path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot?
+    func storeRollupSnapshot(_ snapshot: IndiaPortfolioRollupSnapshot)
+    func removeRollupSnapshot(for path: String)
+}
+
+protocol IndiaPortfolioRollupServicing {
+    func loadPortfolioRollupSnapshot(at path: String) -> IndiaPortfolioRollupSnapshot
+    func invalidateCache(for path: String)
 }
 
 struct FileIndiaDemoFeedService: IndiaDemoFeedProviding {
@@ -134,31 +172,17 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
         }
 
         let buildingCount = IndiaSQLiteSupport.scalarInt(db, sql: "SELECT COUNT(*) FROM building_stock;")
-        let portfolioSummary: IndiaPortfolioRiskSummary
-        let concentrations: [IndiaRiskConcentration]
-        if IndiaSQLiteSupport.tableExists("risk_assessments", in: db) {
-            portfolioSummary = loadPortfolioSummary(from: db)
-            concentrations = loadTopRiskConcentrations(from: db)
-        } else {
-            portfolioSummary = .empty
-            concentrations = []
-        }
         let datasetCount = IndiaSQLiteSupport.scalarInt(db, sql: "SELECT COUNT(*) FROM datasets;")
-        let statusMessage: String
-        if buildingCount == 0 {
-            statusMessage = "Database connected. \(datasetCount) datasets registered, but no building stock imported yet."
-        } else if portfolioSummary.assessedAssets == 0 {
-            statusMessage = "Database connected. \(buildingCount) buildings available for site screening, but no stored wildfire assessments yet."
-        } else {
-            statusMessage = "Database connected. \(buildingCount) buildings available for site screening and \(portfolioSummary.assessedAssets) assets already carry wildfire assessments."
-        }
+        let statusMessage = buildingCount == 0
+            ? "Database connected. \(datasetCount) datasets registered, but no building stock imported yet."
+            : "Database connected. \(buildingCount) buildings available for site screening."
 
         return IndiaDatabaseStatusSnapshot(
             databaseConnected: true,
             schemaReady: true,
             buildingCount: buildingCount,
-            portfolioSummary: portfolioSummary,
-            topRiskConcentrations: concentrations,
+            portfolioSummary: .empty,
+            topRiskConcentrations: [],
             statusMessage: statusMessage
         )
     }
@@ -398,71 +422,11 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
         )
     }
 
-    private func loadPortfolioSummary(from db: OpaquePointer?) -> IndiaPortfolioRiskSummary {
-        let sql = """
-        SELECT
-            COUNT(*) AS assessed_assets,
-            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
-            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
-            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
-            COUNT(DISTINCT NULLIF(TRIM(COALESCE(scenario_label, '')), '')) AS unique_scenarios,
-            MAX(created_at) AS latest_assessment_at
-        FROM risk_assessments
-        WHERE hazard_type = 'wildfire';
-        """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            return .empty
+    private func currentDatabaseModifiedAt(at path: String) -> Date? {
+        guard let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.contentModificationDateKey]) else {
+            return nil
         }
-        defer { sqlite3_finalize(statement) }
-        guard sqlite3_step(statement) == SQLITE_ROW else { return .empty }
-
-        return IndiaPortfolioRiskSummary(
-            assessedAssets: Int(sqlite3_column_int(statement, 0)),
-            highRiskAssets: Int(sqlite3_column_int(statement, 1)),
-            mediumRiskAssets: Int(sqlite3_column_int(statement, 2)),
-            lowRiskAssets: Int(sqlite3_column_int(statement, 3)),
-            uniqueScenarios: Int(sqlite3_column_int(statement, 4)),
-            latestAssessmentAt: IndiaSQLiteSupport.nullableString(statement, index: 5)
-        )
-    }
-
-    private func loadTopRiskConcentrations(from db: OpaquePointer?) -> [IndiaRiskConcentration] {
-        let sql = """
-        SELECT
-            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
-            COUNT(*) AS asset_count,
-            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
-            AVG(ra.burn_probability) AS avg_burn_probability
-        FROM risk_assessments ra
-        LEFT JOIN building_stock b ON b.building_id = ra.building_id
-        WHERE ra.hazard_type = 'wildfire'
-        GROUP BY state_code
-        ORDER BY high_assets DESC, asset_count DESC
-        LIMIT 4;
-        """
-
-        var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            return []
-        }
-        defer { sqlite3_finalize(statement) }
-
-        var results: [IndiaRiskConcentration] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
-            let stateCode = IndiaSQLiteSupport.stringColumn(statement, index: 0)
-            results.append(
-                IndiaRiskConcentration(
-                    id: stateCode,
-                    stateCode: stateCode,
-                    assetCount: Int(sqlite3_column_int(statement, 1)),
-                    highRiskCount: Int(sqlite3_column_int(statement, 2)),
-                    averageBurnProbability: IndiaSQLiteSupport.nullableDouble(statement, index: 3)
-                )
-            )
-        }
-        return results
+        return values.contentModificationDate
     }
 
     private func ensureRiskAssessmentIndexes(in db: OpaquePointer?) throws {
@@ -649,6 +613,311 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
             return "{\"linkageVersion\":\"wildfire-india-v1\"}"
         }
         return text
+    }
+}
+
+final class FileIndiaPortfolioRollupCacheStore: IndiaPortfolioRollupCaching {
+    private struct CacheEnvelope: Codable {
+        var entries: [String: CacheEntry]
+    }
+
+    private struct CacheEntry: Codable {
+        let databaseModifiedAt: Date?
+        let snapshot: IndiaPortfolioRollupSnapshot
+    }
+
+    private let queue = DispatchQueue(label: "com.climateliberator.india-rollup-cache", qos: .utility)
+    private let cacheURL: URL
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+    private var inMemoryEntries: [String: CacheEntry] = [:]
+    private var isLoaded = false
+
+    init(cacheURL: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Documents/ClimateLiberator/_climateliberator/india/rollup-cache.json", isDirectory: false)) {
+        self.cacheURL = cacheURL
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        self.encoder = encoder
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        self.decoder = decoder
+    }
+
+    func cachedRollupSnapshot(for path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot? {
+        queue.sync {
+            loadIfNeeded()
+            guard let entry = inMemoryEntries[path], entry.databaseModifiedAt == modifiedAt else {
+                return nil
+            }
+            return entry.snapshot
+        }
+    }
+
+    func storeRollupSnapshot(_ snapshot: IndiaPortfolioRollupSnapshot) {
+        queue.sync {
+            loadIfNeeded()
+            inMemoryEntries[snapshot.databasePath] = CacheEntry(
+                databaseModifiedAt: snapshot.databaseModifiedAt,
+                snapshot: snapshot
+            )
+            persist()
+        }
+    }
+
+    func removeRollupSnapshot(for path: String) {
+        queue.sync {
+            loadIfNeeded()
+            inMemoryEntries.removeValue(forKey: path)
+            persist()
+        }
+    }
+
+    private func loadIfNeeded() {
+        guard !isLoaded else { return }
+        isLoaded = true
+        guard let data = try? Data(contentsOf: cacheURL),
+              let envelope = try? decoder.decode(CacheEnvelope.self, from: data) else {
+            return
+        }
+        inMemoryEntries = envelope.entries
+    }
+
+    private func persist() {
+        do {
+            let directory = cacheURL.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let envelope = CacheEnvelope(entries: inMemoryEntries)
+            let data = try encoder.encode(envelope)
+            try data.write(to: cacheURL, options: .atomic)
+        } catch {
+            // Cache failures should never block the app.
+        }
+    }
+}
+
+struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
+    func loadPortfolioRollupSnapshot(at path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot {
+        guard let db = IndiaSQLiteSupport.openDatabase(at: path, writable: false) else {
+            return IndiaPortfolioRollupSnapshot(
+                databasePath: path,
+                databaseModifiedAt: modifiedAt,
+                generatedAt: Date(),
+                buildingCount: 0,
+                portfolioSummary: .empty,
+                topRiskConcentrations: [],
+                hierarchySummaries: [],
+                statusMessage: "India portfolio database is not available."
+            )
+        }
+        defer { sqlite3_close(db) }
+
+        guard IndiaSQLiteSupport.tableExists("building_stock", in: db),
+              IndiaSQLiteSupport.tableExists("datasets", in: db) else {
+            return IndiaPortfolioRollupSnapshot(
+                databasePath: path,
+                databaseModifiedAt: modifiedAt,
+                generatedAt: Date(),
+                buildingCount: 0,
+                portfolioSummary: .empty,
+                topRiskConcentrations: [],
+                hierarchySummaries: [],
+                statusMessage: "Database found, but the expected Climate Liberator India tables are missing."
+            )
+        }
+
+        let buildingCount = IndiaSQLiteSupport.scalarInt(db, sql: "SELECT COUNT(*) FROM building_stock;")
+        let portfolioSummary = loadPortfolioSummary(from: db)
+        let topRiskConcentrations = loadTopRiskConcentrations(from: db)
+        let hierarchySummaries = loadHierarchySummaries(from: db)
+
+        let statusMessage: String
+        if buildingCount == 0 {
+            statusMessage = "India portfolio database is connected, but no building stock has been imported yet."
+        } else if portfolioSummary.assessedAssets == 0 {
+            statusMessage = "India portfolio database is connected. \(buildingCount) buildings are ready for hierarchy-aware summary caching."
+        } else {
+            statusMessage = "India portfolio database is connected. \(portfolioSummary.assessedAssets) assessed assets are now served through cached rollups."
+        }
+
+        return IndiaPortfolioRollupSnapshot(
+            databasePath: path,
+            databaseModifiedAt: modifiedAt,
+            generatedAt: Date(),
+            buildingCount: buildingCount,
+            portfolioSummary: portfolioSummary,
+            topRiskConcentrations: topRiskConcentrations,
+            hierarchySummaries: hierarchySummaries,
+            statusMessage: statusMessage
+        )
+    }
+
+    private func loadPortfolioSummary(from db: OpaquePointer?) -> IndiaPortfolioRiskSummary {
+        let sql = """
+        SELECT
+            COUNT(*) AS assessed_assets,
+            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
+            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
+            SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
+            COUNT(DISTINCT NULLIF(TRIM(COALESCE(scenario_label, '')), '')) AS unique_scenarios,
+            MAX(created_at) AS latest_assessment_at
+        FROM risk_assessments
+        WHERE hazard_type = 'wildfire';
+        """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return .empty
+        }
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_step(statement) == SQLITE_ROW else { return .empty }
+
+        return IndiaPortfolioRiskSummary(
+            assessedAssets: Int(sqlite3_column_int(statement, 0)),
+            highRiskAssets: Int(sqlite3_column_int(statement, 1)),
+            mediumRiskAssets: Int(sqlite3_column_int(statement, 2)),
+            lowRiskAssets: Int(sqlite3_column_int(statement, 3)),
+            uniqueScenarios: Int(sqlite3_column_int(statement, 4)),
+            latestAssessmentAt: IndiaSQLiteSupport.nullableString(statement, index: 5)
+        )
+    }
+
+    private func loadTopRiskConcentrations(from db: OpaquePointer?) -> [IndiaRiskConcentration] {
+        let sql = """
+        SELECT
+            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
+            COUNT(*) AS asset_count,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
+            AVG(ra.burn_probability) AS avg_burn_probability
+        FROM risk_assessments ra
+        LEFT JOIN building_stock b ON b.building_id = ra.building_id
+        WHERE ra.hazard_type = 'wildfire'
+        GROUP BY state_code
+        ORDER BY high_assets DESC, asset_count DESC, avg_burn_probability DESC, state_code ASC
+        LIMIT 4;
+        """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+        defer { sqlite3_finalize(statement) }
+
+        var results: [IndiaRiskConcentration] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let stateCode = IndiaSQLiteSupport.stringColumn(statement, index: 0)
+            results.append(
+                IndiaRiskConcentration(
+                    id: stateCode,
+                    stateCode: stateCode,
+                    assetCount: Int(sqlite3_column_int(statement, 1)),
+                    highRiskCount: Int(sqlite3_column_int(statement, 2)),
+                    averageBurnProbability: IndiaSQLiteSupport.nullableDouble(statement, index: 3)
+                )
+            )
+        }
+        return results
+    }
+
+    private func loadHierarchySummaries(from db: OpaquePointer?) -> [IndiaPortfolioHierarchySummary] {
+        let sql = """
+        SELECT
+            'state' AS level,
+            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
+            NULL AS district_name,
+            COUNT(*) AS asset_count,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
+            AVG(ra.burn_probability) AS avg_burn_probability
+        FROM risk_assessments ra
+        LEFT JOIN building_stock b ON b.building_id = ra.building_id
+        WHERE ra.hazard_type = 'wildfire'
+        GROUP BY state_code
+        UNION ALL
+        SELECT
+            'district' AS level,
+            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
+            COALESCE(NULLIF(TRIM(COALESCE(b.district_name, '')), ''), 'Unknown') AS district_name,
+            COUNT(*) AS asset_count,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
+            SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
+            AVG(ra.burn_probability) AS avg_burn_probability
+        FROM risk_assessments ra
+        LEFT JOIN building_stock b ON b.building_id = ra.building_id
+        WHERE ra.hazard_type = 'wildfire'
+        GROUP BY state_code, district_name
+        ORDER BY high_assets DESC, asset_count DESC, state_code ASC, district_name ASC
+        LIMIT 12;
+        """
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+        defer { sqlite3_finalize(statement) }
+
+        var results: [IndiaPortfolioHierarchySummary] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let level = IndiaSQLiteSupport.stringColumn(statement, index: 0)
+            let stateCode = IndiaSQLiteSupport.stringColumn(statement, index: 1)
+            let districtName = IndiaSQLiteSupport.nullableString(statement, index: 2)
+            let assetCount = Int(sqlite3_column_int(statement, 3))
+            let highRiskCount = Int(sqlite3_column_int(statement, 4))
+            let mediumRiskCount = Int(sqlite3_column_int(statement, 5))
+            let lowRiskCount = Int(sqlite3_column_int(statement, 6))
+            let averageBurnProbability = IndiaSQLiteSupport.nullableDouble(statement, index: 7)
+            let id = "\(level):\(stateCode):\(districtName ?? "*")"
+
+            results.append(
+                IndiaPortfolioHierarchySummary(
+                    id: id,
+                    level: level,
+                    stateCode: stateCode,
+                    districtName: districtName,
+                    assetCount: assetCount,
+                    highRiskCount: highRiskCount,
+                    mediumRiskCount: mediumRiskCount,
+                    lowRiskCount: lowRiskCount,
+                    averageBurnProbability: averageBurnProbability
+                )
+            )
+        }
+        return results
+    }
+}
+
+final class IndiaPortfolioRollupService: IndiaPortfolioRollupServicing {
+    private let loader: IndiaPortfolioRollupLoading
+    private let cacheStore: IndiaPortfolioRollupCaching
+
+    init(loader: IndiaPortfolioRollupLoading = SQLiteIndiaPortfolioRollupSnapshotLoader(),
+         cacheStore: IndiaPortfolioRollupCaching = FileIndiaPortfolioRollupCacheStore()) {
+        self.loader = loader
+        self.cacheStore = cacheStore
+    }
+
+    func loadPortfolioRollupSnapshot(at path: String) -> IndiaPortfolioRollupSnapshot {
+        let modifiedAt = currentDatabaseModifiedAt(at: path)
+        if let cached = cacheStore.cachedRollupSnapshot(for: path, modifiedAt: modifiedAt) {
+            return cached
+        }
+        let snapshot = loader.loadPortfolioRollupSnapshot(at: path, modifiedAt: modifiedAt)
+        cacheStore.storeRollupSnapshot(snapshot)
+        return snapshot
+    }
+
+    func invalidateCache(for path: String) {
+        cacheStore.removeRollupSnapshot(for: path)
+    }
+
+    private func currentDatabaseModifiedAt(at path: String) -> Date? {
+        guard let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.contentModificationDateKey]) else {
+            return nil
+        }
+        return values.contentModificationDate
     }
 }
 

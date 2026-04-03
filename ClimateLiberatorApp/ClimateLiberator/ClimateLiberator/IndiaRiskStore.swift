@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-struct IndiaNearbyBuilding: Identifiable, Hashable {
+struct IndiaNearbyBuilding: Identifiable, Codable, Hashable {
     let id: String
     let districtName: String
     let stateCode: String
@@ -16,13 +16,13 @@ struct IndiaNearbyBuilding: Identifiable, Hashable {
     let scenarioLabel: String?
 }
 
-struct IndiaBuildingLookupSummary: Hashable {
+struct IndiaBuildingLookupSummary: Codable, Hashable {
     let buildingCount: Int
     let totalFootprintM2: Double
     let totalBuiltUpM2: Double
 }
 
-struct IndiaPortfolioRiskSummary: Hashable {
+struct IndiaPortfolioRiskSummary: Codable, Hashable {
     let assessedAssets: Int
     let highRiskAssets: Int
     let mediumRiskAssets: Int
@@ -118,7 +118,7 @@ struct IndiaDemoPortfolioTrustSummary: Codable, Hashable {
     }
 }
 
-struct IndiaRiskConcentration: Identifiable, Hashable {
+struct IndiaRiskConcentration: Identifiable, Codable, Hashable {
     let id: String
     let stateCode: String
     let assetCount: Int
@@ -126,7 +126,7 @@ struct IndiaRiskConcentration: Identifiable, Hashable {
     let averageBurnProbability: Double?
 }
 
-struct IndiaOEDExportResult: Hashable {
+struct IndiaOEDExportResult: Codable, Hashable {
     let filePath: String
     let rowCount: Int
     let sourceLabel: String
@@ -151,6 +151,7 @@ final class IndiaRiskStore: ObservableObject {
     private let repository: IndiaRiskRepository
     private let exportService: IndiaRiskExporting
     private let demoFeedService: IndiaDemoFeedProviding
+    private let rollupService: IndiaPortfolioRollupServicing
     private var nearbyLookupCache: [NearbyLookupCacheKey: IndiaNearbyLookupSnapshot] = [:]
 
     @Published var databasePath: String
@@ -159,6 +160,7 @@ final class IndiaRiskStore: ObservableObject {
     @Published private(set) var lookupSummary = IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0)
     @Published private(set) var portfolioSummary = IndiaPortfolioRiskSummary.empty
     @Published private(set) var topRiskConcentrations: [IndiaRiskConcentration] = []
+    @Published private(set) var portfolioHierarchySummaries: [IndiaPortfolioHierarchySummary] = []
     @Published private(set) var demoPortfolioOverview: IndiaDemoPortfolioOverview?
     @Published private(set) var demoComparisonSummary: IndiaDemoPortfolioComparisonSummary?
     @Published private(set) var demoTrustSummary: IndiaDemoPortfolioTrustSummary?
@@ -173,18 +175,21 @@ final class IndiaRiskStore: ObservableObject {
             databasePath: databasePath,
             repository: SQLiteIndiaRiskRepository(),
             exportService: SQLiteIndiaOEDExportService(),
-            demoFeedService: FileIndiaDemoFeedService()
+            demoFeedService: FileIndiaDemoFeedService(),
+            rollupService: IndiaPortfolioRollupService()
         )
     }
 
     init(databasePath: String,
          repository: IndiaRiskRepository,
          exportService: IndiaRiskExporting,
-         demoFeedService: IndiaDemoFeedProviding) {
+         demoFeedService: IndiaDemoFeedProviding,
+         rollupService: IndiaPortfolioRollupServicing) {
         self.databasePath = databasePath
         self.repository = repository
         self.exportService = exportService
         self.demoFeedService = demoFeedService
+        self.rollupService = rollupService
     }
 
     var databaseAvailability: ActionAvailability {
@@ -241,6 +246,7 @@ final class IndiaRiskStore: ObservableObject {
         lookupSummary = IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0)
         portfolioSummary = .empty
         topRiskConcentrations = []
+        portfolioHierarchySummaries = []
         demoPortfolioOverview = nil
         demoComparisonSummary = nil
         demoTrustSummary = nil
@@ -251,17 +257,19 @@ final class IndiaRiskStore: ObservableObject {
             guard let self else { return }
             let databaseSnapshot = self.repository.loadDatabaseStatus(at: path)
             let demoFeeds = self.demoFeedService.loadDemoPortfolioFeeds()
+            let rollupSnapshot = self.rollupService.loadPortfolioRollupSnapshot(at: path)
             DispatchQueue.main.async {
                 guard self.databasePath == path else { return }
                 self.databaseConnected = databaseSnapshot.databaseConnected
                 self.schemaReady = databaseSnapshot.schemaReady
                 self.buildingCount = databaseSnapshot.buildingCount
-                self.portfolioSummary = databaseSnapshot.portfolioSummary
-                self.topRiskConcentrations = databaseSnapshot.topRiskConcentrations
+                self.portfolioSummary = rollupSnapshot.portfolioSummary
+                self.topRiskConcentrations = rollupSnapshot.topRiskConcentrations
+                self.portfolioHierarchySummaries = rollupSnapshot.hierarchySummaries
                 self.demoPortfolioOverview = demoFeeds.overview
                 self.demoComparisonSummary = demoFeeds.comparison
                 self.demoTrustSummary = demoFeeds.trust
-                self.statusMessage = databaseSnapshot.statusMessage
+                self.statusMessage = rollupSnapshot.statusMessage.isEmpty ? databaseSnapshot.statusMessage : rollupSnapshot.statusMessage
             }
         }
     }

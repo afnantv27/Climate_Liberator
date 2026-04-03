@@ -1,5 +1,6 @@
 import XCTest
 import CoreLocation
+import SQLite3
 @testable import ClimateLiberator
 
 @MainActor
@@ -281,6 +282,161 @@ final class ClimateLiberatorTests: XCTestCase {
         XCTAssertEqual(report?.successRate ?? 0, 0.8, accuracy: 0.0001)
     }
 
+    func testIndiaPortfolioRollupServiceCachesLoadedSnapshots() {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        let databaseURL = tempRoot.appendingPathComponent("india_rollup.db")
+        FileManager.default.createFile(atPath: databaseURL.path, contents: Data(), attributes: nil)
+        let modifiedAt = try? databaseURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+
+        let expectedSnapshot = IndiaPortfolioRollupSnapshot(
+            databasePath: databaseURL.path,
+            databaseModifiedAt: modifiedAt,
+            generatedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            buildingCount: 2,
+            portfolioSummary: IndiaPortfolioRiskSummary(
+                assessedAssets: 2,
+                highRiskAssets: 1,
+                mediumRiskAssets: 1,
+                lowRiskAssets: 0,
+                uniqueScenarios: 1,
+                latestAssessmentAt: "2026-04-03T00:00:00Z"
+            ),
+            topRiskConcentrations: [
+                IndiaRiskConcentration(id: "MH", stateCode: "MH", assetCount: 2, highRiskCount: 1, averageBurnProbability: 0.61)
+            ],
+            hierarchySummaries: [
+                IndiaPortfolioHierarchySummary(
+                    id: "state:MH:*",
+                    level: "state",
+                    stateCode: "MH",
+                    districtName: nil,
+                    assetCount: 2,
+                    highRiskCount: 1,
+                    mediumRiskCount: 1,
+                    lowRiskCount: 0,
+                    averageBurnProbability: 0.61
+                )
+            ],
+            statusMessage: "Cached summary"
+        )
+
+        let loader = CountingIndiaPortfolioRollupLoader(snapshot: expectedSnapshot)
+        let cache = InMemoryIndiaPortfolioRollupCache()
+        let service = IndiaPortfolioRollupService(loader: loader, cacheStore: cache)
+
+        let first = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
+        let second = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
+
+        XCTAssertEqual(loader.loadCount, 1)
+        XCTAssertEqual(first, expectedSnapshot)
+        XCTAssertEqual(second, expectedSnapshot)
+    }
+
+    func testSQLiteIndiaPortfolioRollupSnapshotLoaderBuildsHierarchySummaries() throws {
+        let databaseURL = try makeIndiaPortfolioRollupDatabase()
+        let loader = SQLiteIndiaPortfolioRollupSnapshotLoader()
+        let snapshot = loader.loadPortfolioRollupSnapshot(at: databaseURL.path, modifiedAt: Date(timeIntervalSince1970: 1_700_000_000))
+
+        XCTAssertEqual(snapshot.buildingCount, 4)
+        XCTAssertEqual(snapshot.portfolioSummary.assessedAssets, 4)
+        XCTAssertEqual(snapshot.portfolioSummary.highRiskAssets, 2)
+        XCTAssertEqual(snapshot.portfolioSummary.mediumRiskAssets, 1)
+        XCTAssertEqual(snapshot.portfolioSummary.lowRiskAssets, 1)
+        XCTAssertEqual(snapshot.portfolioSummary.uniqueScenarios, 2)
+        XCTAssertEqual(snapshot.portfolioSummary.latestAssessmentAt, "2026-04-03T00:00:00Z")
+        XCTAssertEqual(snapshot.topRiskConcentrations.count, 2)
+        XCTAssertTrue(snapshot.topRiskConcentrations.contains { $0.stateCode == "GJ" && $0.assetCount == 2 && $0.highRiskCount == 1 })
+        XCTAssertTrue(snapshot.topRiskConcentrations.contains { $0.stateCode == "MH" && $0.assetCount == 2 && $0.highRiskCount == 1 })
+        XCTAssertTrue(snapshot.hierarchySummaries.contains { $0.level == "state" && $0.stateCode == "MH" })
+        XCTAssertTrue(snapshot.hierarchySummaries.contains { $0.level == "district" && $0.stateCode == "MH" && $0.districtName == "Mumbai" })
+        XCTAssertTrue(snapshot.hierarchySummaries.contains {
+            $0.level == "state" &&
+            $0.stateCode == "MH" &&
+            $0.assetCount == 2 &&
+            $0.highRiskCount == 1 &&
+            $0.mediumRiskCount == 1 &&
+            $0.lowRiskCount == 0
+        })
+        XCTAssertTrue(snapshot.hierarchySummaries.contains {
+            $0.level == "district" &&
+            $0.stateCode == "GJ" &&
+            $0.districtName == "Ahmedabad" &&
+            $0.assetCount == 1 &&
+            $0.highRiskCount == 1
+        })
+        XCTAssertTrue(snapshot.statusMessage.contains("cached rollups") || snapshot.statusMessage.contains("portfolio database"))
+    }
+
+    func testIndiaRiskStoreRefreshUsesHierarchyAwareRollupSnapshot() {
+        let databasePath = "/tmp/india-risk-rollup-\(UUID().uuidString).db"
+        let repository = StubIndiaRiskRepository(
+            databaseStatus: IndiaDatabaseStatusSnapshot(
+                databaseConnected: true,
+                schemaReady: true,
+                buildingCount: 4,
+                portfolioSummary: .empty,
+                topRiskConcentrations: [],
+                statusMessage: "Database connected. 4 buildings available for site screening."
+            )
+        )
+        let demoFeedService = StubIndiaDemoFeedService(snapshot: IndiaDemoPortfolioFeedSnapshot(overview: nil, comparison: nil, trust: nil))
+        let expectedRollup = IndiaPortfolioRollupSnapshot(
+            databasePath: databasePath,
+            databaseModifiedAt: nil,
+            generatedAt: Date(timeIntervalSince1970: 1_700_000_200),
+            buildingCount: 4,
+            portfolioSummary: IndiaPortfolioRiskSummary(
+                assessedAssets: 4,
+                highRiskAssets: 2,
+                mediumRiskAssets: 1,
+                lowRiskAssets: 1,
+                uniqueScenarios: 2,
+                latestAssessmentAt: "2026-04-03T00:00:00Z"
+            ),
+            topRiskConcentrations: [
+                IndiaRiskConcentration(id: "MH", stateCode: "MH", assetCount: 2, highRiskCount: 1, averageBurnProbability: 0.52)
+            ],
+            hierarchySummaries: [
+                IndiaPortfolioHierarchySummary(
+                    id: "state:MH:*",
+                    level: "state",
+                    stateCode: "MH",
+                    districtName: nil,
+                    assetCount: 2,
+                    highRiskCount: 1,
+                    mediumRiskCount: 1,
+                    lowRiskCount: 0,
+                    averageBurnProbability: 0.52
+                )
+            ],
+            statusMessage: "India portfolio database is connected. 4 assessed assets are now served through cached rollups."
+        )
+        let rollupService = StubIndiaPortfolioRollupService(snapshot: expectedRollup)
+        let exportService = StubIndiaRiskExportService()
+        let store = IndiaRiskStore(
+            databasePath: databasePath,
+            repository: repository,
+            exportService: exportService,
+            demoFeedService: demoFeedService,
+            rollupService: rollupService
+        )
+
+        let expectation = expectation(description: "rollup refresh completes")
+        store.refreshDatabaseStatus()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            XCTAssertEqual(store.buildingCount, 4)
+            XCTAssertEqual(store.portfolioSummary, expectedRollup.portfolioSummary)
+            XCTAssertEqual(store.topRiskConcentrations, expectedRollup.topRiskConcentrations)
+            XCTAssertEqual(store.portfolioHierarchySummaries, expectedRollup.hierarchySummaries)
+            XCTAssertEqual(store.statusMessage, expectedRollup.statusMessage)
+            XCTAssertEqual(rollupService.loadCount, 1)
+            expectation.fulfill()
+        }
+
+        waitForExpectations(timeout: 2.0)
+    }
+
     func testDisclosureBundleServiceCountsRunManifestsInsideClimateLiberatorBundleRoot() throws {
         let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let bundleRoot = tempRoot.appendingPathComponent("_climateliberator", isDirectory: true)
@@ -371,6 +527,48 @@ final class ClimateLiberatorTests: XCTestCase {
         XCTAssertEqual(records.first?.engineLabel, "Climate Liberator Runtime preview")
         XCTAssertEqual(records.first?.outputDirectory, outputRoot.path)
     }
+
+    func testEnterprisePlatformBuildsReadinessSummaryFromTelemetryAndArtifacts() {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let outputRoot = tempRoot.appendingPathComponent("output", isDirectory: true)
+        let climateRoot = outputRoot.appendingPathComponent("_climateliberator", isDirectory: true)
+        let runRoot = climateRoot.appendingPathComponent("run-001", isDirectory: true)
+        try? FileManager.default.createDirectory(at: runRoot, withIntermediateDirectories: true)
+        try? "{}".write(to: runRoot.appendingPathComponent("run_manifest.json"), atomically: true, encoding: .utf8)
+
+        let recorder = InMemoryEnterpriseObservabilityRecorder(samples: [
+            EnterpriseLatencySample(surface: .dashboard, metricClass: .interactiveRequest, durationMilliseconds: 320, success: true),
+            EnterpriseLatencySample(surface: .simulation, metricClass: .asyncJobCompletion, durationMilliseconds: 1_900, success: true)
+        ])
+        let registry = InMemoryArtifactRegistryService(records: [
+            EnterpriseArtifactRecord(kind: .simulation,
+                                     engineLabel: "Climate Liberator Runtime preview",
+                                     runID: "run-001",
+                                     outputDirectory: outputRoot.path,
+                                     manifestURL: runRoot.appendingPathComponent("run_manifest.json").path,
+                                     artifactURL: nil)
+        ])
+        let platform = ClimateLiberatorEnterprisePlatform(
+            availabilityObjectives: EnterpriseObjectiveCatalog.availabilityObjectives,
+            serviceLevelObjectives: EnterpriseObjectiveCatalog.serviceLevelObjectives,
+            referenceCapacity: EnterpriseObjectiveCatalog.referenceCapacity,
+            observability: recorder,
+            artifactRegistry: registry,
+            portfolioQueries: LocalPortfolioQueryService(),
+            forecastArtifacts: LocalForecastArtifactService(repository: EmptyForecastFeedRepository(),
+                                                           evidenceManager: ForecastEvidencePromotionManager(snapshotStore: InMemoryForecastSnapshotStore())),
+            disclosureBundles: LocalDisclosureBundleService(),
+            simulationEngine: FakeSimulationEngineService(result: .failure(NSError(domain: "test", code: 1)))
+        )
+
+        let summary = platform.readinessSummary(outputFolder: outputRoot.path)
+
+        XCTAssertEqual(summary.activeArtifactCount, 1)
+        XCTAssertEqual(summary.disclosureManifestCount, 1)
+        XCTAssertEqual(summary.latestSimulationEngineLabel, "Climate Liberator Runtime preview")
+        XCTAssertEqual(summary.measuredSurfaceCount, 2)
+        XCTAssertTrue(summary.surfaceReadiness.contains { $0.surface == .dashboard && $0.healthLabel == "Healthy" })
+    }
 }
 
 private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore {
@@ -387,6 +585,61 @@ private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore
     }
 }
 
+private struct EmptyForecastFeedRepository: ForecastFeedRepository {
+    func loadProcessedFeed(near coordinate: CLLocationCoordinate2D, horizon: ForecastHorizon) -> ProcessedForecastFeed? {
+        nil
+    }
+
+    func loadBuildSupportFeeds() -> ForecastBuildSupportFeeds {
+        ForecastBuildSupportFeeds(overview: nil, providerTrust: nil, warningSummary: nil)
+    }
+}
+
+private final class InMemoryEnterpriseObservabilityRecorder: EnterpriseObservabilityRecording {
+    private(set) var samples: [EnterpriseLatencySample]
+
+    init(samples: [EnterpriseLatencySample] = []) {
+        self.samples = samples
+    }
+
+    func record(_ sample: EnterpriseLatencySample) {
+        samples.append(sample)
+    }
+
+    func recentSamples(limit: Int) -> [EnterpriseLatencySample] {
+        guard limit > 0 else { return samples }
+        return Array(samples.suffix(limit))
+    }
+}
+
+private final class InMemoryArtifactRegistryService: ArtifactRegistryServicing {
+    private(set) var records: [EnterpriseArtifactRecord]
+
+    init(records: [EnterpriseArtifactRecord] = []) {
+        self.records = records
+    }
+
+    @discardableResult
+    func registerSimulationExecution(result: SimulationEngineExecutionResult,
+                                     request: SimulationEngineRequest,
+                                     correlationID: String) throws -> EnterpriseArtifactRecord {
+        let record = EnterpriseArtifactRecord(kind: .simulation,
+                                              engineLabel: result.engineLabel,
+                                              runID: result.runArtifactURL?.deletingPathExtension().lastPathComponent,
+                                              outputDirectory: request.outputFolder,
+                                              manifestURL: result.outputManifestURL?.path,
+                                              artifactURL: result.runArtifactURL?.path,
+                                              metadata: ["correlation_id": correlationID])
+        records.append(record)
+        return record
+    }
+
+    func loadRecords(kind: EnterpriseArtifactKind?) -> [EnterpriseArtifactRecord] {
+        guard let kind else { return records }
+        return records.filter { $0.kind == kind }
+    }
+}
+
 private struct FakeSimulationEngineService: SimulationEngineServicing {
     let result: Result<SimulationEngineExecutionResult, Error>
 
@@ -398,6 +651,165 @@ private struct FakeSimulationEngineService: SimulationEngineServicing {
              completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
         completion(result)
     }
+}
+
+private struct StubIndiaRiskRepository: IndiaRiskRepository {
+    let databaseStatus: IndiaDatabaseStatusSnapshot
+
+    func loadDatabaseStatus(at path: String) -> IndiaDatabaseStatusSnapshot {
+        databaseStatus
+    }
+
+    func loadNearbyBuildings(at path: String,
+                             latitude: Double,
+                             longitude: Double,
+                             radiusMeters: Double) -> IndiaNearbyLookupSnapshot {
+        IndiaNearbyLookupSnapshot(
+            buildings: [],
+            summary: IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0),
+            statusMessage: "No nearby lookup data."
+        )
+    }
+
+    func persistWildfireAssessments(databasePath: String,
+                                    request: IndiaWildfireRiskLinkRequest,
+                                    grid: IndiaWildfireRiskGrid) throws -> IndiaWildfireRiskLinkResult {
+        IndiaWildfireRiskLinkResult(candidateCount: 0, storedCount: 0, highRiskCount: 0, mediumRiskCount: 0, lowRiskCount: 0)
+    }
+}
+
+private struct StubIndiaRiskExportService: IndiaRiskExporting {
+    func buildOEDExport(at path: String) -> (result: IndiaOEDExportResult?, errorMessage: String?) {
+        (nil, nil)
+    }
+}
+
+private struct StubIndiaDemoFeedService: IndiaDemoFeedProviding {
+    let snapshot: IndiaDemoPortfolioFeedSnapshot
+
+    func loadDemoPortfolioFeeds() -> IndiaDemoPortfolioFeedSnapshot {
+        snapshot
+    }
+}
+
+private final class StubIndiaPortfolioRollupService: IndiaPortfolioRollupServicing {
+    private(set) var loadCount = 0
+    private let snapshot: IndiaPortfolioRollupSnapshot
+
+    init(snapshot: IndiaPortfolioRollupSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func loadPortfolioRollupSnapshot(at path: String) -> IndiaPortfolioRollupSnapshot {
+        loadCount += 1
+        return snapshot
+    }
+
+    func invalidateCache(for path: String) {}
+}
+
+private final class CountingIndiaPortfolioRollupLoader: IndiaPortfolioRollupLoading {
+    private(set) var loadCount = 0
+    private let snapshot: IndiaPortfolioRollupSnapshot
+
+    init(snapshot: IndiaPortfolioRollupSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func loadPortfolioRollupSnapshot(at path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot {
+        loadCount += 1
+        return snapshot
+    }
+}
+
+private final class InMemoryIndiaPortfolioRollupCache: IndiaPortfolioRollupCaching {
+    private var snapshot: IndiaPortfolioRollupSnapshot?
+
+    func cachedRollupSnapshot(for path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot? {
+        guard let snapshot,
+              snapshot.databasePath == path,
+              snapshot.databaseModifiedAt == modifiedAt else {
+            return nil
+        }
+        return snapshot
+    }
+
+    func storeRollupSnapshot(_ snapshot: IndiaPortfolioRollupSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func removeRollupSnapshot(for path: String) {
+        if snapshot?.databasePath == path {
+            snapshot = nil
+        }
+    }
+}
+
+private func makeIndiaPortfolioRollupDatabase() throws -> URL {
+    let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+    let databaseURL = tempRoot.appendingPathComponent("india_rollup.db")
+
+    var db: OpaquePointer?
+    XCTAssertEqual(sqlite3_open(databaseURL.path, &db), SQLITE_OK)
+    defer { sqlite3_close(db) }
+
+    let statements = [
+        """
+        CREATE TABLE building_stock (
+            building_id TEXT PRIMARY KEY,
+            state_code TEXT,
+            district_name TEXT,
+            latitude REAL,
+            longitude REAL,
+            area_m2 REAL,
+            total_built_up_m2 REAL,
+            building_floor_count INTEGER,
+            landuse TEXT
+        );
+        """,
+        """
+        CREATE TABLE datasets (
+            dataset_id TEXT PRIMARY KEY,
+            dataset_name TEXT
+        );
+        """,
+        """
+        CREATE TABLE risk_assessments (
+            assessment_id TEXT PRIMARY KEY,
+            run_id TEXT,
+            building_id TEXT,
+            hazard_type TEXT,
+            scenario_label TEXT,
+            burn_probability REAL,
+            created_at TEXT,
+            risk_band TEXT,
+            site_asset_id TEXT
+        );
+        """
+    ]
+
+    for sql in statements {
+        XCTAssertEqual(sqlite3_exec(db, sql, nil, nil, nil), SQLITE_OK)
+    }
+
+    let inserts = [
+        "INSERT INTO datasets (dataset_id, dataset_name) VALUES ('ds-1', 'India baseline');",
+        "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b1', 'MH', 'Mumbai', 19.07, 72.87, 100.0, 120.0, 10, 'utility');",
+        "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b2', 'MH', 'Pune', 18.52, 73.85, 140.0, 150.0, 8, 'industrial');",
+        "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b3', 'GJ', 'Ahmedabad', 23.02, 72.57, 90.0, 110.0, 12, 'utility');",
+        "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b4', 'GJ', 'Surat', 21.17, 72.83, 80.0, 95.0, 6, 'residential');",
+        "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a1', 'run-1', 'b1', 'wildfire', 'Baseline', 0.61, '2026-04-03T00:00:00Z', 'High', NULL);",
+        "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a2', 'run-1', 'b2', 'wildfire', 'Baseline', 0.44, '2026-04-03T00:00:00Z', 'Medium', NULL);",
+        "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a3', 'run-1', 'b3', 'wildfire', 'Stress', 0.78, '2026-04-03T00:00:00Z', 'High', NULL);",
+        "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a4', 'run-1', 'b4', 'wildfire', 'Stress', 0.18, '2026-04-03T00:00:00Z', 'Low', NULL);"
+    ]
+
+    for sql in inserts {
+        XCTAssertEqual(sqlite3_exec(db, sql, nil, nil, nil), SQLITE_OK)
+    }
+
+    return databaseURL
 }
 
 private func makeBoardReadyReviewRecord() -> TCFDReviewRecord {

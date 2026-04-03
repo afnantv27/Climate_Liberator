@@ -1,4 +1,6 @@
+import SQLite3
 import XCTest
+import SQLite3
 @testable import ClimateLiberator
 
 @MainActor
@@ -109,6 +111,109 @@ final class ClimateLiberatorPerformanceTests: XCTestCase {
             } catch {
                 XCTFail("Round-trip performance failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    func testIndiaPortfolioRollupCachedLoadPerformance() throws {
+        let databaseURL = try makeIndiaPortfolioRollupDatabaseForPerformance()
+        let loader = SQLiteIndiaPortfolioRollupSnapshotLoader()
+        let cache = InMemoryIndiaPortfolioRollupCache()
+        let service = IndiaPortfolioRollupService(loader: loader, cacheStore: cache)
+
+        _ = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
+
+        measure(metrics: [XCTClockMetric()]) {
+            _ = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
+        }
+    }
+
+    private func makeIndiaPortfolioRollupDatabaseForPerformance() throws -> URL {
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        let databaseURL = tempRoot.appendingPathComponent("india_rollup.db")
+
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(databaseURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+
+        let statements = [
+            """
+            CREATE TABLE building_stock (
+                building_id TEXT PRIMARY KEY,
+                state_code TEXT,
+                district_name TEXT,
+                latitude REAL,
+                longitude REAL,
+                area_m2 REAL,
+                total_built_up_m2 REAL,
+                building_floor_count INTEGER,
+                landuse TEXT
+            );
+            """,
+            """
+            CREATE TABLE datasets (
+                dataset_id TEXT PRIMARY KEY,
+                dataset_name TEXT
+            );
+            """,
+            """
+            CREATE TABLE risk_assessments (
+                assessment_id TEXT PRIMARY KEY,
+                run_id TEXT,
+                building_id TEXT,
+                hazard_type TEXT,
+                scenario_label TEXT,
+                burn_probability REAL,
+                created_at TEXT,
+                risk_band TEXT,
+                site_asset_id TEXT
+            );
+            """
+        ]
+
+        for sql in statements {
+            XCTAssertEqual(sqlite3_exec(db, sql, nil, nil, nil), SQLITE_OK)
+        }
+
+        let inserts = [
+            "INSERT INTO datasets (dataset_id, dataset_name) VALUES ('ds-1', 'India baseline');",
+            "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b1', 'MH', 'Mumbai', 19.07, 72.87, 100.0, 120.0, 10, 'utility');",
+            "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b2', 'MH', 'Pune', 18.52, 73.85, 140.0, 150.0, 8, 'industrial');",
+            "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b3', 'GJ', 'Ahmedabad', 23.02, 72.57, 90.0, 110.0, 12, 'utility');",
+            "INSERT INTO building_stock (building_id, state_code, district_name, latitude, longitude, area_m2, total_built_up_m2, building_floor_count, landuse) VALUES ('b4', 'GJ', 'Surat', 21.17, 72.83, 80.0, 95.0, 6, 'residential');",
+            "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a1', 'run-1', 'b1', 'wildfire', 'Baseline', 0.61, '2026-04-03T00:00:00Z', 'High', NULL);",
+            "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a2', 'run-1', 'b2', 'wildfire', 'Baseline', 0.44, '2026-04-03T00:00:00Z', 'Medium', NULL);",
+            "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a3', 'run-1', 'b3', 'wildfire', 'Stress', 0.78, '2026-04-03T00:00:00Z', 'High', NULL);",
+            "INSERT INTO risk_assessments (assessment_id, run_id, building_id, hazard_type, scenario_label, burn_probability, created_at, risk_band, site_asset_id) VALUES ('a4', 'run-1', 'b4', 'wildfire', 'Stress', 0.18, '2026-04-03T00:00:00Z', 'Low', NULL);"
+        ]
+
+        for sql in inserts {
+            XCTAssertEqual(sqlite3_exec(db, sql, nil, nil, nil), SQLITE_OK)
+        }
+
+        return databaseURL
+    }
+}
+
+private final class InMemoryIndiaPortfolioRollupCache: IndiaPortfolioRollupCaching {
+    private var snapshot: IndiaPortfolioRollupSnapshot?
+
+    func cachedRollupSnapshot(for path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot? {
+        guard let snapshot,
+              snapshot.databasePath == path,
+              snapshot.databaseModifiedAt == modifiedAt else {
+            return nil
+        }
+        return snapshot
+    }
+
+    func storeRollupSnapshot(_ snapshot: IndiaPortfolioRollupSnapshot) {
+        self.snapshot = snapshot
+    }
+
+    func removeRollupSnapshot(for path: String) {
+        if snapshot?.databasePath == path {
+            snapshot = nil
         }
     }
 }
