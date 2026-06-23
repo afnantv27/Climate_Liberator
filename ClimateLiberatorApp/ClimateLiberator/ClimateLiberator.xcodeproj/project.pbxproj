@@ -437,9 +437,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../build/lib",
-					"/opt/homebrew/lib",
-					"/opt/homebrew/opt/libomp/lib",
-					"/opt/homebrew/opt/libtiff/lib",
+					/opt/homebrew/lib,
+					/opt/homebrew/opt/libomp/lib,
+					/opt/homebrew/opt/libtiff/lib,
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
@@ -490,9 +490,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../build/lib",
-					"/opt/homebrew/lib",
-					"/opt/homebrew/opt/libomp/lib",
-					"/opt/homebrew/opt/libtiff/lib",
+					/opt/homebrew/lib,
+					/opt/homebrew/opt/libomp/lib,
+					/opt/homebrew/opt/libtiff/lib,
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
