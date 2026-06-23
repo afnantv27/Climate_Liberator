@@ -99,6 +99,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 447BCF192F5CDF620079DEA7 /* Build configuration list for PBXNativeTarget "ClimateLiberator" */;
 			buildPhases = (
+				AA0C2F01B001C2F300000001 /* Build libcell2fire.a */,
 				447BCF0A2F5CDF610079DEA7 /* Sources */,
 				447BCF0B2F5CDF610079DEA7 /* Frameworks */,
 				447BCF0C2F5CDF610079DEA7 /* Resources */,
@@ -231,6 +232,29 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		AA0C2F01B001C2F300000001 /* Build libcell2fire.a */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build libcell2fire.a";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/../build/lib/libcell2fire.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -euo pipefail\n\nBUILD_DIR=\"${SRCROOT}/../build\"\nLIB_FILE=\"${BUILD_DIR}/lib/libcell2fire.a\"\n\n# Skip rebuild if library already exists and is fresh (< 1 hour old)\nif [ -f \"$LIB_FILE\" ]; then\n  AGE=$(( $(date +%s) - $(stat -f %m \"$LIB_FILE\") ))\n  if [ $AGE -lt 3600 ]; then\n    echo \"libcell2fire.a is fresh (${AGE}s old), skipping rebuild.\"\n    exit 0\n  fi\nfi\n\necho \"Building libcell2fire.a...\"\n\"${SRCROOT}/../scripts/build_libcell2fire.sh\" \"${SRCROOT}/../../Cell2Fire\" \"${BUILD_DIR}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		447BCF0A2F5CDF610079DEA7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -306,7 +330,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -369,7 +393,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -398,6 +422,11 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../build/include",
+					"$(SRCROOT)/ClimateLiberator/Cell2FireEngine",
+				);
 				INFOPLIST_KEY_CFBundleDisplayName = "Climate Liberator";
 				INFOPLIST_KEY_CFBundleName = "Climate Liberator";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -405,7 +434,23 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../build/lib",
+					"/opt/homebrew/lib",
+					"/opt/homebrew/opt/libomp/lib",
+					"/opt/homebrew/opt/libtiff/lib",
+				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lcell2fire",
+					"-lomp",
+					"-ltiff",
+					"-lm",
+					"-lpthread",
+					"-lc++",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.afnan.ClimateLiberator.ClimateLiberator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -413,6 +458,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/ClimateLiberator/Cell2FireEngine/ClimateLiberator-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -429,6 +475,11 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../build/include",
+					"$(SRCROOT)/ClimateLiberator/Cell2FireEngine",
+				);
 				INFOPLIST_KEY_CFBundleDisplayName = "Climate Liberator";
 				INFOPLIST_KEY_CFBundleName = "Climate Liberator";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -436,7 +487,23 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../build/lib",
+					"/opt/homebrew/lib",
+					"/opt/homebrew/opt/libomp/lib",
+					"/opt/homebrew/opt/libtiff/lib",
+				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lcell2fire",
+					"-lomp",
+					"-ltiff",
+					"-lm",
+					"-lpthread",
+					"-lc++",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.afnan.ClimateLiberator.ClimateLiberator;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -444,6 +511,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/ClimateLiberator/Cell2FireEngine/ClimateLiberator-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};

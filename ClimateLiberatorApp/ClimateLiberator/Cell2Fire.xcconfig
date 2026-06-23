@@ -1,0 +1,24 @@
+// Cell2Fire.xcconfig
+//
+// Xcode build configuration for linking the embedded Cell2Fire engine.
+// Apply this to the ClimateLiberator target in Xcode:
+//   Project → Target → Build Settings → "Based on Configuration File"
+//
+// Before building, run:
+//   cd ClimateLiberatorApp && ./scripts/build_libcell2fire.sh
+
+HOMEBREW_PREFIX = /opt/homebrew
+
+// Bridging header for Swift ↔ C interop
+SWIFT_OBJC_BRIDGING_HEADER = $(SRCROOT)/ClimateLiberator/Cell2FireEngine/ClimateLiberator-Bridging-Header.h
+
+// Where to find libcell2fire.a
+LIBRARY_SEARCH_PATHS = $(inherited) $(SRCROOT)/../build/lib $(HOMEBREW_PREFIX)/lib $(HOMEBREW_PREFIX)/opt/libomp/lib $(HOMEBREW_PREFIX)/opt/libtiff/lib
+
+// Where to find cell2fire_api.h (also used by bridging header)
+HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/../build/include $(SRCROOT)/ClimateLiberator/Cell2FireEngine $(HOMEBREW_PREFIX)/include $(HOMEBREW_PREFIX)/opt/libomp/include
+
+// Link the Cell2Fire static library + its dependencies.
+// No -lstdc++: the engine is built with clang++/libc++ (see build_libcell2fire.sh),
+// and the Xcode toolchain links libc++ automatically.
+OTHER_LDFLAGS = $(inherited) -lcell2fire -lomp -ltiff -lm -lpthread -lc++

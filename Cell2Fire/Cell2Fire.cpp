@@ -39,6 +39,10 @@ __maintainer__ = "Jaime Carrasco, Cristobal Pais, David Woodruff, David Palacios
 
 using namespace std;
 
+// Single definition of the globals declared extern in Cell2Fire.h.
+string C2FW_VERSION = "v0.0.0";
+string sim_log_filename = "ignition_and_weather_log.csv";
+
 // Global Variables (DFs with cells and weather info)
 inputs* df_ptr;
 // weatherDF* wdf_ptr;
@@ -2359,6 +2363,10 @@ Cell2Fire::chooseWeather(const string& weatherOpt, int rnumber, int simExt)
  * - Handling multi-threading for parallel simulations.
  *
  */
+// The CLI entry point is excluded from the embedded-library build
+// (build_libcell2fire.sh defines CELL2FIRE_LIBRARY) so it does not collide
+// with the host application's own main().
+#ifndef CELL2FIRE_LIBRARY
 int
 main(int argc, char* argv[])
 {
@@ -2450,3 +2458,4 @@ main(int argc, char* argv[])
     delete[] df;
     return 0;
 }
+#endif // CELL2FIRE_LIBRARY

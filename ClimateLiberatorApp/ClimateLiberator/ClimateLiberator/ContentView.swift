@@ -15,6 +15,9 @@ struct ContentView: View {
     @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
     @AppStorage("climateliberator.outputFolder") private var outputFolder = ""
     @AppStorage("climateliberator.theme") private var theme: ThemeStyle = .night
+    // Default to the legacy subprocess engine: it is the verified ground truth.
+    // The embedded engine builds but is not yet at output parity with the CLI
+    // (see docs/embedded-engine-parity.md), so it is opt-in until those bugs land.
     @AppStorage("climateliberator.engineMode") private var engineModeRaw = SimulationEngineMode.legacyCell2Fire.rawValue
 
     @State private var showingFolderPicker = false

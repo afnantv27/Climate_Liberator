@@ -116,6 +116,7 @@ protocol SimulationOutputTreeServicing: Sendable {
 
 enum SimulationEngineMode: String, Codable, CaseIterable, Identifiable {
     case legacyCell2Fire
+    case embeddedCell2Fire
     case climateLiberatorRuntimePreview
 
     var id: String { rawValue }
@@ -123,9 +124,18 @@ enum SimulationEngineMode: String, Codable, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .legacyCell2Fire:
-            return "Legacy Cell2Fire backend"
+            return "Legacy Cell2Fire (subprocess)"
+        case .embeddedCell2Fire:
+            return "Embedded Cell2Fire (in-process, experimental — not at CLI parity)"
         case .climateLiberatorRuntimePreview:
             return "Climate Liberator Runtime preview"
+        }
+    }
+
+    var requiresExternalBinary: Bool {
+        switch self {
+        case .embeddedCell2Fire: return false
+        default: return true
         }
     }
 }
@@ -353,24 +363,30 @@ final class ClimateLiberatorEngineAdapter: SimulationEngineServicing {
 
 final class HybridSimulationEngineAdapter: SimulationEngineServicing {
     private let legacyAdapter: SimulationEngineServicing
+    private let embeddedAdapter: SimulationEngineServicing
     private let nativeAdapter: SimulationEngineServicing
     private let stateQueue = DispatchQueue(label: "com.climateliberator.simulation-engine.hybrid-state", qos: .utility)
     private var activeMode: SimulationEngineMode = .legacyCell2Fire
 
     init(legacyAdapter: SimulationEngineServicing = LegacyCell2FireEngineAdapter(),
+         embeddedAdapter: SimulationEngineServicing = EmbeddedCell2FireEngineAdapter(),
          nativeAdapter: SimulationEngineServicing = ClimateLiberatorEngineAdapter()) {
         self.legacyAdapter = legacyAdapter
+        self.embeddedAdapter = embeddedAdapter
         self.nativeAdapter = nativeAdapter
+    }
+
+    private func adapter(for mode: SimulationEngineMode) -> SimulationEngineServicing {
+        switch mode {
+        case .legacyCell2Fire:                 return legacyAdapter
+        case .embeddedCell2Fire:               return embeddedAdapter
+        case .climateLiberatorRuntimePreview:  return nativeAdapter
+        }
     }
 
     func cancel() {
         let mode = stateQueue.sync { activeMode }
-        switch mode {
-        case .legacyCell2Fire:
-            legacyAdapter.cancel()
-        case .climateLiberatorRuntimePreview:
-            nativeAdapter.cancel()
-        }
+        adapter(for: mode).cancel()
     }
 
     func run(request: SimulationEngineRequest,
@@ -378,18 +394,12 @@ final class HybridSimulationEngineAdapter: SimulationEngineServicing {
              onStandardError: ((String) -> Void)?,
              completion: @escaping (Result<SimulationEngineExecutionResult, Error>) -> Void) {
         stateQueue.sync { activeMode = request.mode }
-        switch request.mode {
-        case .legacyCell2Fire:
-            legacyAdapter.run(request: request,
-                              onStandardOutput: onStandardOutput,
-                              onStandardError: onStandardError,
-                              completion: completion)
-        case .climateLiberatorRuntimePreview:
-            nativeAdapter.run(request: request,
-                              onStandardOutput: onStandardOutput,
-                              onStandardError: onStandardError,
-                              completion: completion)
-        }
+        adapter(for: request.mode).run(
+            request: request,
+            onStandardOutput: onStandardOutput,
+            onStandardError: onStandardError,
+            completion: completion
+        )
     }
 }
 
