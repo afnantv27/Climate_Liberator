@@ -126,7 +126,7 @@ enum SimulationEngineMode: String, Codable, CaseIterable, Identifiable {
         case .legacyCell2Fire:
             return "Legacy Cell2Fire (subprocess)"
         case .embeddedCell2Fire:
-            return "Embedded Cell2Fire (in-process)"
+            return "Embedded Cell2Fire (in-process, experimental — not at CLI parity)"
         case .climateLiberatorRuntimePreview:
             return "Climate Liberator Runtime preview"
         }
@@ -366,7 +366,7 @@ final class HybridSimulationEngineAdapter: SimulationEngineServicing {
     private let embeddedAdapter: SimulationEngineServicing
     private let nativeAdapter: SimulationEngineServicing
     private let stateQueue = DispatchQueue(label: "com.climateliberator.simulation-engine.hybrid-state", qos: .utility)
-    private var activeMode: SimulationEngineMode = .embeddedCell2Fire
+    private var activeMode: SimulationEngineMode = .legacyCell2Fire
 
     init(legacyAdapter: SimulationEngineServicing = LegacyCell2FireEngineAdapter(),
          embeddedAdapter: SimulationEngineServicing = EmbeddedCell2FireEngineAdapter(),
