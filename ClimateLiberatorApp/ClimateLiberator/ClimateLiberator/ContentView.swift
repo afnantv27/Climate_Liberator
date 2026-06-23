@@ -6,78 +6,78 @@ import UniformTypeIdentifiers
 import Combine
 
 struct ContentView: View {
-    @ObservedObject private var scenarioStore: ScenarioLibraryStore
-    @ObservedObject private var reviewStore: TCFDReviewStore
-    @ObservedObject private var forecastStore: ForecastIntelligenceStore
-    @Environment(\.openWindow) private var openWindow
+    @ObservedObject var scenarioStore: ScenarioLibraryStore
+    @ObservedObject var reviewStore: TCFDReviewStore
+    @ObservedObject var forecastStore: ForecastIntelligenceStore
+    @Environment(\.openWindow) var openWindow
 
-    @AppStorage("climateliberator.binaryPath") private var binaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
-    @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
-    @AppStorage("climateliberator.outputFolder") private var outputFolder = ""
-    @AppStorage("climateliberator.theme") private var theme: ThemeStyle = .night
+    @AppStorage("climateliberator.binaryPath") var binaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
+    @AppStorage("climateliberator.inputFolder") var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
+    @AppStorage("climateliberator.outputFolder") var outputFolder = ""
+    @AppStorage("climateliberator.theme") var theme: ThemeStyle = .night
     // Default to the legacy subprocess engine: it is the verified ground truth.
     // The embedded engine builds but is not yet at output parity with the CLI
     // (see docs/embedded-engine-parity.md), so it is opt-in until those bugs land.
-    @AppStorage("climateliberator.engineMode") private var engineModeRaw = SimulationEngineMode.legacyCell2Fire.rawValue
+    @AppStorage("climateliberator.engineMode") var engineModeRaw = SimulationEngineMode.legacyCell2Fire.rawValue
 
-    @State private var showingFolderPicker = false
-    @State private var showingOutputPicker = false
-    @State private var showingBinaryPicker = false
-    @State private var mapRegion = MKCoordinateRegion(
+    @State var showingFolderPicker = false
+    @State var showingOutputPicker = false
+    @State var showingBinaryPicker = false
+    @State var mapRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.155, longitude: 5.387),
         span: MKCoordinateSpan(latitudeDelta: 3.0, longitudeDelta: 3.0)
     )
-    @StateObject private var simulationState = SimulationRunState()
-    @State private var activeWorkspace: AppWorkspace = .dashboard
-    @State private var isPanelVisible = true
-    @StateObject private var locationSearchState = LocationSearchState()
-    @State private var useSatelliteView = false
-    @State private var enable3DView = false
-    @State private var mapHeading: CLLocationDirection = 0
-    @State private var controlsExpanded = true
-    @StateObject private var overlayState = SimulationOverlayState()
-    @StateObject private var outputStore: SimulationOutputStore
-    @State private var restoredRunID: String?
-    @State private var legendOffset: CGSize = .zero
-    @GestureState private var legendDragTranslation: CGSize = .zero
-    @StateObject private var mapController = MapController()
-    @AppStorage("climateliberator.overrideCRS.enabled") private var useOverrideCRS = false
-    @AppStorage("climateliberator.overrideCRS.code") private var overrideCRSCode = "EPSG:4326"
-    @State private var showCRSInfo = false
-    @AppStorage("climateliberator.rosPalette") private var rosPaletteRawValue = RateOfSpreadPalette.terrain.rawValue
-    @AppStorage("climateliberator.rosOpacity") private var rosOpacity = 0.85
-    @AppStorage("climateliberator.ee.serviceAccount") private var earthEngineServiceAccount = "climascan@wildire-modelling.iam.gserviceaccount.com"
-    @AppStorage("climateliberator.ee.keyPath") private var earthEngineKeyPath = "/Users/afnan/Library/Application Support/ClimateLiberator/earthengine-key.json"
-    @AppStorage("climateliberator.ee.dataset") private var earthEngineDataset = "COPERNICUS/S2_SR"
-    @AppStorage("climateliberator.ee.band") private var earthEngineBand = "B04"
-    @AppStorage("climateliberator.ee.startDate") private var earthEngineStartDate = "2025-01-01"
-    @AppStorage("climateliberator.ee.endDate") private var earthEngineEndDate = "2025-12-31"
-    @AppStorage("climateliberator.ee.scaleMeters") private var earthEngineScaleInput = "10"
-    @AppStorage("climateliberator.ee.scriptPath") private var earthEngineScriptPath = "/Users/afnan/Desktop/ClimateLiberator/ClimateLiberator/Scripts/fetch_from_earth_engine.py"
-    @AppStorage("climateliberator.ee.mode") private var earthEngineModeRaw = EarthEngineTarget.overlay.rawValue
-    @AppStorage("climateliberator.ee.demFilename") private var earthEngineDemFilename = "elevation.asc"
-    @AppStorage("climateliberator.ee.useStudyBounds") private var useStudyAreaBounds = false
-    @AppStorage("climateliberator.mapVisible") private var mapVisible = false
-    @AppStorage("climateliberator.ee.expanded") private var earthEngineExpanded = true
-    @StateObject private var earthEngineState = EarthEngineFetchState()
-    @StateObject private var indiaRiskStore = IndiaRiskStore()
-    @StateObject private var exposureIntakeStore = ExposureIntakeStore()
-    @State private var reviewRefreshWorkItem: DispatchWorkItem?
+    @StateObject var simulationState = SimulationRunState()
+    @State var activeWorkspace: AppWorkspace = .dashboard
+    @State var isPanelVisible = true
+    @StateObject var locationSearchState = LocationSearchState()
+    @State var useSatelliteView = false
+    @State var enable3DView = false
+    @State var mapHeading: CLLocationDirection = 0
+    @State var controlsExpanded = true
+    @StateObject var overlayState = SimulationOverlayState()
+    @StateObject var outputStore: SimulationOutputStore
+    @State var restoredRunID: String?
+    @State var legendOffset: CGSize = .zero
+    @GestureState var legendDragTranslation: CGSize = .zero
+    @StateObject var mapController = MapController()
+    @AppStorage("climateliberator.overrideCRS.enabled") var useOverrideCRS = false
+    @AppStorage("climateliberator.overrideCRS.code") var overrideCRSCode = "EPSG:4326"
+    @State var showCRSInfo = false
+    @AppStorage("climateliberator.rosPalette") var rosPaletteRawValue = RateOfSpreadPalette.terrain.rawValue
+    @AppStorage("climateliberator.rosOpacity") var rosOpacity = 0.85
+    @AppStorage("climateliberator.ee.serviceAccount") var earthEngineServiceAccount = "climascan@wildire-modelling.iam.gserviceaccount.com"
+    @AppStorage("climateliberator.ee.keyPath") var earthEngineKeyPath = "/Users/afnan/Library/Application Support/ClimateLiberator/earthengine-key.json"
+    @AppStorage("climateliberator.ee.dataset") var earthEngineDataset = "COPERNICUS/S2_SR"
+    @AppStorage("climateliberator.ee.band") var earthEngineBand = "B04"
+    @AppStorage("climateliberator.ee.startDate") var earthEngineStartDate = "2025-01-01"
+    @AppStorage("climateliberator.ee.endDate") var earthEngineEndDate = "2025-12-31"
+    @AppStorage("climateliberator.ee.scaleMeters") var earthEngineScaleInput = "10"
+    @AppStorage("climateliberator.ee.scriptPath") var earthEngineScriptPath = "/Users/afnan/Desktop/ClimateLiberator/ClimateLiberator/Scripts/fetch_from_earth_engine.py"
+    @AppStorage("climateliberator.ee.mode") var earthEngineModeRaw = EarthEngineTarget.overlay.rawValue
+    @AppStorage("climateliberator.ee.demFilename") var earthEngineDemFilename = "elevation.asc"
+    @AppStorage("climateliberator.ee.useStudyBounds") var useStudyAreaBounds = false
+    @AppStorage("climateliberator.mapVisible") var mapVisible = false
+    @AppStorage("climateliberator.ee.expanded") var earthEngineExpanded = true
+    @StateObject var earthEngineState = EarthEngineFetchState()
+    @StateObject var indiaRiskStore = IndiaRiskStore()
+    @StateObject var exposureIntakeStore = ExposureIntakeStore()
+    @State var reviewRefreshWorkItem: DispatchWorkItem?
     @available(macOS, introduced: 10.8, deprecated: 26)
-    private let legacyFallbackGeocoder = CLGeocoder()
+    let legacyFallbackGeocoder = CLGeocoder()
 
-    private let enterprisePlatform: ClimateLiberatorEnterprisePlatform
-    private let simulationEngineService: SimulationEngineServicing
-    private let artifactService: SimulationArtifactServicing
-    private let runConfigService: SimulationRunConfigServicing
-    private let reviewDiscoveryService: SimulationReviewDiscoveryServicing
-    private let simOptions: [(label: String, value: String)] = [
+    let enterprisePlatform: ClimateLiberatorEnterprisePlatform
+    let simulationEngineService: SimulationEngineServicing
+    let artifactService: SimulationArtifactServicing
+    let runConfigService: SimulationRunConfigServicing
+    let reviewDiscoveryService: SimulationReviewDiscoveryServicing
+    let simOptions: [(label: String, value: String)] = [
         ("Scott & Burgan", "S"),
         ("Kitral", "K"),
         ("FBP-Canada", "C")
     ]
-    private let preferredBinaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
-    private let legacyBinaryPaths = [
+    let preferredBinaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
+    let legacyBinaryPaths = [
         "/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire",
         "/Users/afnan/Desktop/Wildfire Model/Cell2Fire/C2F-W/Cell2Fire/Cell2Fire"
     ]
@@ -101,38 +101,38 @@ struct ContentView: View {
         self.runConfigService = runConfigService
         self.reviewDiscoveryService = reviewDiscoveryService
     }
-    private let maxCachedSearchEntries = 12
-    private let maxLogCharacterCount = 40_000
-    private let outputTreeLimits = OutputTreeDiscoveryLimits(maxDepth: 4, maxNodes: 300)
-    private static var gdalTranslateCache: String?
-    private static var gdalWarpCache: String?
-    private static var gdalTransformCache: String?
+    let maxCachedSearchEntries = 12
+    let maxLogCharacterCount = 40_000
+    let outputTreeLimits = OutputTreeDiscoveryLimits(maxDepth: 4, maxNodes: 300)
+    static var gdalTranslateCache: String?
+    static var gdalWarpCache: String?
+    static var gdalTransformCache: String?
 
-    private var rosPalette: RateOfSpreadPalette {
+    var rosPalette: RateOfSpreadPalette {
         get { RateOfSpreadPalette(rawValue: rosPaletteRawValue) ?? .terrain }
         set { rosPaletteRawValue = newValue.rawValue }
     }
 
-    private var simulationEngineMode: SimulationEngineMode {
+    var simulationEngineMode: SimulationEngineMode {
         get { SimulationEngineMode(rawValue: engineModeRaw) ?? .legacyCell2Fire }
         set { engineModeRaw = newValue.rawValue }
     }
 
-    private var rosPaletteBinding: Binding<RateOfSpreadPalette> {
+    var rosPaletteBinding: Binding<RateOfSpreadPalette> {
         Binding(get: { RateOfSpreadPalette(rawValue: rosPaletteRawValue) ?? .terrain },
                 set: { rosPaletteRawValue = $0.rawValue })
     }
 
-    private var earthEngineMode: EarthEngineTarget {
+    var earthEngineMode: EarthEngineTarget {
         get { EarthEngineTarget(rawValue: earthEngineModeRaw) ?? .overlay }
         set { earthEngineModeRaw = newValue.rawValue }
     }
 
-    private var studyAreaExtentStatus: String {
+    var studyAreaExtentStatus: String {
         earthEngineState.studyAreaExtentStatusMessage
     }
 
-    private var canFetchEarthEngine: Bool {
+    var canFetchEarthEngine: Bool {
         let account = earthEngineServiceAccount.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = earthEngineKeyPath.trimmingCharacters(in: .whitespacesAndNewlines)
         let dataset = earthEngineDataset.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -156,11 +156,11 @@ struct ContentView: View {
         decoratedRootView
     }
 
-    private var decoratedRootView: some View {
+    var decoratedRootView: some View {
         rootLifecycleView
     }
 
-    private var rootOverlayView: some View {
+    var rootOverlayView: some View {
         ClimateLiberatorWorkspaceShellView(
             activeWorkspace: $activeWorkspace,
             theme: theme,
@@ -221,13 +221,13 @@ struct ContentView: View {
         )
     }
 
-    private var rootAppearanceView: some View {
+    var rootAppearanceView: some View {
         rootOverlayView
         .tint(theme.accentColor)
         .preferredColorScheme(theme.colorScheme)
     }
 
-    private var rootFileImportView: some View {
+    var rootFileImportView: some View {
         rootAppearanceView
         .fileImporter(isPresented: $showingFolderPicker,
                        allowedContentTypes: [.folder],
@@ -240,7 +240,7 @@ struct ContentView: View {
                        allowsMultipleSelection: false, onCompletion: handleBinarySelection)
     }
 
-    private var rootAlertView: some View {
+    var rootAlertView: some View {
         rootFileImportView
         .alert("Weather Interval", isPresented: $simulationState.showWeatherInfo) {
             Button("OK", role: .cancel) { }
@@ -277,7 +277,7 @@ struct ContentView: View {
         }
     }
 
-    private var rootObservedView: some View {
+    var rootObservedView: some View {
         rootAlertView
         .onChange(of: mapVisible) { _, visible in
             if !visible {
@@ -313,7 +313,7 @@ struct ContentView: View {
         }
     }
 
-    private var rootStudyAreaObservedView: some View {
+    var rootStudyAreaObservedView: some View {
         rootObservedView
         .onChange(of: useStudyAreaBounds) { _, _ in
             scheduleStudyAreaExtentStatusRefresh()
@@ -331,7 +331,7 @@ struct ContentView: View {
         }
     }
 
-    private var rootLifecycleView: some View {
+    var rootLifecycleView: some View {
         rootStudyAreaObservedView
         .onAppear {
             activeWorkspace = .dashboard
@@ -347,7 +347,7 @@ struct ContentView: View {
         }
     }
 
-    private var mapLayer: AnyView {
+    var mapLayer: AnyView {
         if mapVisible {
             return AnyView(
                 ZoomableMapView(region: $mapRegion,
@@ -431,7 +431,7 @@ struct ContentView: View {
         }
     }
 
-    private var panelLayer: AnyView {
+    var panelLayer: AnyView {
         if isPanelVisible {
             return AnyView(
                 VStack(alignment: .leading, spacing: 18) {
@@ -481,7 +481,7 @@ struct ContentView: View {
         }
     }
 
-    private var mainCard: some View {
+    var mainCard: some View {
         OperationsWorkspaceView(
             style: WorkspaceSectionStyle(
                 textColor: theme.textColor,
@@ -531,7 +531,7 @@ struct ContentView: View {
         }
     }
 
-    private var dashboardWorkspaceView: some View {
+    var dashboardWorkspaceView: some View {
         DashboardWorkspaceView(
             enterpriseReadiness: enterpriseReadinessSummary,
             openClimateSimulation: {
@@ -548,7 +548,7 @@ struct ContentView: View {
         )
     }
 
-    private var commandCenterWorkspaceView: some View {
+    var commandCenterWorkspaceView: some View {
         CommandCenterWorkspaceView(
             scenarioStore: scenarioStore,
             reviewStore: reviewStore,
@@ -570,14 +570,14 @@ struct ContentView: View {
         )
     }
 
-    private var enterpriseReadinessSummary: EnterpriseReadinessSummary {
+    var enterpriseReadinessSummary: EnterpriseReadinessSummary {
         enterprisePlatform
             .dashboard
             .fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputFolder))
             .readinessSummary
     }
 
-    private var intelligenceWorkspaceView: some View {
+    var intelligenceWorkspaceView: some View {
         PortfolioIntelligenceWorkspaceView(
             indiaRiskStore: indiaRiskStore,
             exposureIntakeStore: exposureIntakeStore,
@@ -588,7 +588,7 @@ struct ContentView: View {
         )
     }
 
-    private func executiveMetricCard(title: String, value: String, detail: String) -> some View {
+    func executiveMetricCard(title: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.subheadline)
@@ -612,7 +612,7 @@ struct ContentView: View {
         )
     }
 
-    private func dashboardPanelCard<Content: View>(title: String,
+    func dashboardPanelCard<Content: View>(title: String,
                                                    subtitle: String,
                                                    @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -636,7 +636,7 @@ struct ContentView: View {
         )
     }
 
-    private var indiaWildfireReadinessPanel: some View {
+    var indiaWildfireReadinessPanel: some View {
         let checks = indiaWildfireReadinessChecks
         let readyCount = checks.filter(\.isReady).count
 
@@ -677,7 +677,7 @@ struct ContentView: View {
         }
     }
 
-    private var recentSimulationActivityPanel: some View {
+    var recentSimulationActivityPanel: some View {
         Group {
             if simulationState.runSummaries.isEmpty {
                 Text("No simulation has been completed in this session yet.")
@@ -709,7 +709,7 @@ struct ContentView: View {
         }
     }
 
-    private var indiaWildfireReadinessChecks: [IndiaWildfireReadinessCheck] {
+    var indiaWildfireReadinessChecks: [IndiaWildfireReadinessCheck] {
         let normalizedInput = NSString(string: inputFolder.trimmingCharacters(in: .whitespacesAndNewlines)).expandingTildeInPath
         let inputURL = URL(fileURLWithPath: normalizedInput)
         let fm = FileManager.default
@@ -751,21 +751,21 @@ struct ContentView: View {
         ]
     }
 
-    private var indiaWildfireSimulationReadinessMessage: String {
+    var indiaWildfireSimulationReadinessMessage: String {
         let checks = indiaWildfireReadinessChecks
         return checks.allSatisfy(\.isReady)
             ? "Simulation-ready for a prepared India wildfire study."
             : "Ready only when all prepared wildfire inputs are present and aligned."
     }
 
-    private func preferredInputFile(in folder: URL, candidates: [String]) -> URL? {
+    func preferredInputFile(in folder: URL, candidates: [String]) -> URL? {
         guard FileManager.default.fileExists(atPath: folder.path) else { return nil }
         return candidates
             .map { folder.appendingPathComponent($0) }
             .first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
-    private var searchCard: some View {
+    var searchCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Map Search")
                 .font(.headline)
@@ -808,7 +808,7 @@ struct ContentView: View {
                          strokeColor: theme.borderColor)
     }
 
-    private var earthEngineCard: some View {
+    var earthEngineCard: some View {
         DisclosureGroup(isExpanded: $earthEngineExpanded) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Import Sentinel, Landsat, DEM or other rasters directly from your non-commercial Earth Engine account. The helper writes into the private overlays folder so nothing lands in Git.")
@@ -905,7 +905,7 @@ struct ContentView: View {
                          strokeColor: theme.borderColor)
     }
 
-    private var mapModeControls: some View {
+    var mapModeControls: some View {
         VStack(spacing: 12) {
             MapModeButton(icon: mapVisible ? "map.fill" : "map",
                           label: mapVisible ? "Hide" : "Map",
@@ -947,7 +947,7 @@ struct ContentView: View {
         }
     }
 
-    private var environmentSection: some View {
+    var environmentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SettingRow(title: "Cell2Fire Binary", theme: theme) {
                 TextField("/path/to/Cell2Fire", text: $binaryPath)
@@ -996,7 +996,7 @@ struct ContentView: View {
         }
     }
 
-    private var scenarioWorkflowSection: some View {
+    var scenarioWorkflowSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
                 if scenarioStore.scenarios.isEmpty {
@@ -1040,7 +1040,7 @@ struct ContentView: View {
         }
     }
 
-    private var indiaSiteLookupSection: some View {
+    var indiaSiteLookupSection: some View {
         IndiaSiteLookupView(
             store: indiaRiskStore,
             currentCoordinate: mapRegion.center,
@@ -1053,7 +1053,7 @@ struct ContentView: View {
         )
     }
 
-    private var runSetupSection: some View {
+    var runSetupSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Button("Import Run Config") {
@@ -1095,7 +1095,7 @@ struct ContentView: View {
         }
     }
 
-    private var resultsSection: some View {
+    var resultsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Button(simulationState.isExportingKMZ ? "Exporting GIS Footprint…" : "Export GIS Footprint (KMZ)") {
@@ -1142,7 +1142,7 @@ struct ContentView: View {
         }
     }
 
-    private var crsOverrideSection: some View {
+    var crsOverrideSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle(isOn: $useOverrideCRS) {
                 HStack(spacing: 4) {
@@ -1165,7 +1165,7 @@ struct ContentView: View {
         }
     }
 
-    private var logSection: some View {
+    var logSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Run Log")
@@ -1185,7 +1185,7 @@ struct ContentView: View {
         }
     }
 
-    private var outputExplorer: some View {
+    var outputExplorer: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Text("Output Explorer")
@@ -1232,7 +1232,7 @@ struct ContentView: View {
         }
     }
 
-    private var logView: some View {
+    var logView: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 Text(simulationState.log.isEmpty ? "No simulation log entries yet." : simulationState.log)
@@ -1262,7 +1262,7 @@ struct ContentView: View {
         )
     }
 
-    private var weatherIntervalSection: some View {
+    var weatherIntervalSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 HStack(spacing: 4) {
@@ -1295,7 +1295,7 @@ struct ContentView: View {
         }
     }
 
-    private var rosVisualizationControls: some View {
+    var rosVisualizationControls: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("ROS Visualization")
                 .font(.headline)
@@ -1321,7 +1321,7 @@ struct ContentView: View {
         }
     }
 
-    private var simulationSettings: some View {
+    var simulationSettings: some View {
         VStack(alignment: .leading, spacing: 8) {
             simulationField(title: "Simulations", binding: $simulationState.numberOfSimulationsInput, placeholder: "1") { newValue in
                 let digits = newValue.filter { $0.isNumber }
@@ -1361,23 +1361,23 @@ struct ContentView: View {
         }
     }
 
-    private func togglePanel() {
+    func togglePanel() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             isPanelVisible.toggle()
         }
     }
 
-    private func quitApplication() {
+    func quitApplication() {
         NSApp.terminate(nil)
     }
 
-    private func toggleControlPanel() {
+    func toggleControlPanel() {
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
             controlsExpanded.toggle()
         }
     }
 
-    private var scenarioSelectionBinding: Binding<ScenarioDefinition.ID?> {
+    var scenarioSelectionBinding: Binding<ScenarioDefinition.ID?> {
         Binding(
             get: { scenarioStore.selectedScenarioID },
             set: { newValue in
@@ -1386,7 +1386,7 @@ struct ContentView: View {
         )
     }
 
-    private var selectedScenarioApplicationAvailability: ActionAvailability {
+    var selectedScenarioApplicationAvailability: ActionAvailability {
         guard let scenario = scenarioStore.selectedScenario else {
             return .unavailable("Select a saved disclosure scenario first.")
         }
@@ -1418,7 +1418,7 @@ struct ContentView: View {
         return .ready
     }
 
-    private var operationsWorkspaceAvailability: ActionAvailability {
+    var operationsWorkspaceAvailability: ActionAvailability {
         if simulationState.isRunning {
             return .unavailable("A wildfire simulation is currently running in the operations workspace.")
         }
@@ -1428,21 +1428,21 @@ struct ContentView: View {
         return .ready
     }
 
-    private var portfolioIntelligenceAvailability: ActionAvailability {
+    var portfolioIntelligenceAvailability: ActionAvailability {
         if indiaRiskStore.lookupAvailability.isEnabled {
             return .ready
         }
         return .unavailable(indiaRiskStore.lookupAvailability.reason ?? "Connect a queryable India risk database before screening the portfolio.")
     }
 
-    private var disclosureReviewAvailability: ActionAvailability {
+    var disclosureReviewAvailability: ActionAvailability {
         guard !reviewStore.bundles.isEmpty else {
             return .unavailable("Generate a disclosure package from a successful run before starting disclosure review.")
         }
         return .ready
     }
 
-    private var runActionAvailability: ActionAvailability {
+    var runActionAvailability: ActionAvailability {
         if simulationState.isRunning {
             return .unavailable("A wildfire simulation is already running.")
         }
@@ -1452,7 +1452,7 @@ struct ContentView: View {
         return .ready
     }
 
-    private var exportActionAvailability: ActionAvailability {
+    var exportActionAvailability: ActionAvailability {
         if simulationState.isRunning {
             return .unavailable("Wait for the current simulation to finish before exporting.")
         }
@@ -1482,7 +1482,7 @@ struct ContentView: View {
         return .unavailable("No ROS ASCII outputs are available for KMZ export yet.")
     }
 
-    private var outputRefreshAvailability: ActionAvailability {
+    var outputRefreshAvailability: ActionAvailability {
         if outputStore.isLoading {
             return .unavailable("Output discovery is already running.")
         }
@@ -1492,11 +1492,11 @@ struct ContentView: View {
         return .unavailable("Run a simulation or import an Earth Engine layer first.")
     }
 
-    private var logActionAvailability: ActionAvailability {
+    var logActionAvailability: ActionAvailability {
         simulationState.log.isEmpty ? .unavailable("No simulation log entries are available yet.") : .ready
     }
 
-    private var earthEngineActionAvailability: ActionAvailability {
+    var earthEngineActionAvailability: ActionAvailability {
         if earthEngineState.isFetching {
             return .unavailable("Earth Engine import is already running.")
         }
@@ -1506,7 +1506,7 @@ struct ContentView: View {
         return .unavailable("Complete the dataset, band, dates, credentials, and helper script before fetching.")
     }
 
-    private var latestDisclosureReportAvailability: ActionAvailability {
+    var latestDisclosureReportAvailability: ActionAvailability {
         guard let latest = reviewStore.bundles.first else {
             return .unavailable("Generate a disclosure package before opening a report.")
         }
@@ -1518,7 +1518,7 @@ struct ContentView: View {
         )
     }
 
-    private var latestEvidencePackageAvailability: ActionAvailability {
+    var latestEvidencePackageAvailability: ActionAvailability {
         guard let latest = reviewStore.bundles.first else {
             return .unavailable("Generate a disclosure package before opening the latest evidence package.")
         }
@@ -1530,7 +1530,7 @@ struct ContentView: View {
         )
     }
 
-    private var openOutputFolderAvailability: ActionAvailability {
+    var openOutputFolderAvailability: ActionAvailability {
         guard let outputDirectory = simulationState.lastOutputDirectory else {
             return .unavailable("Run a simulation first to generate an output folder.")
         }
@@ -1542,7 +1542,7 @@ struct ContentView: View {
         )
     }
 
-    private func applySelectedScenario() {
+    func applySelectedScenario() {
         guard selectedScenarioApplicationAvailability.isEnabled else {
             appendToLog(selectedScenarioApplicationAvailability.reason ?? "Selected scenario is not ready to apply.")
             return
@@ -1574,7 +1574,7 @@ struct ContentView: View {
         scheduleStudyAreaExtentStatusRefresh()
     }
 
-    private func scheduleStudyAreaExtentStatusRefresh() {
+    func scheduleStudyAreaExtentStatusRefresh() {
         earthEngineState.studyAreaExtentRefreshWorkItem?.cancel()
         let workItem = DispatchWorkItem {
             let message = buildStudyAreaExtentStatusMessage()
@@ -1586,7 +1586,7 @@ struct ContentView: View {
         DispatchQueue.global(qos: .utility).async(execute: workItem)
     }
 
-    private func buildStudyAreaExtentStatusMessage() -> String {
+    func buildStudyAreaExtentStatusMessage() -> String {
         guard let gridURL = locateStudyGrid() else {
             return "fuels.asc not found in the current input folder; map extent will be used."
         }
@@ -1601,7 +1601,7 @@ struct ContentView: View {
         return "Cannot reproject \(gridURL.lastPathComponent) into WGS84 automatically; map extent will be used (install GDAL and set a CRS override if needed)."
     }
 
-    private func refreshReviewDiscoveryRoots() {
+    func refreshReviewDiscoveryRoots() {
         reviewRefreshWorkItem?.cancel()
         let workItem = DispatchWorkItem {
             reviewStore.updateDiscoveryRoots(reviewDiscoveryService.discoveryRoots(for: outputFolder))
@@ -1610,7 +1610,7 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
     }
 
-    private func performLocationSearch() {
+    func performLocationSearch() {
         let trimmed = locationSearchState.query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             locationSearchState.statusMessage = "Enter a place name or coordinate."
@@ -1680,7 +1680,7 @@ struct ContentView: View {
         }
     }
 
-    private func currentOperationalRunConfigDocument() -> OperationalRunConfigDocument {
+    func currentOperationalRunConfigDocument() -> OperationalRunConfigDocument {
         let selectedScenario = scenarioStore.selectedScenario
         return OperationalRunConfigDocument(
             schemaVersion: 1,
@@ -1704,7 +1704,7 @@ struct ContentView: View {
         )
     }
 
-    private func exportRunConfiguration() {
+    func exportRunConfiguration() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
@@ -1722,7 +1722,7 @@ struct ContentView: View {
         }
     }
 
-    private func importRunConfiguration() {
+    func importRunConfiguration() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.canChooseDirectories = false
@@ -1740,7 +1740,7 @@ struct ContentView: View {
         }
     }
 
-    private func applyImportedRunConfiguration(_ document: OperationalRunConfigDocument) {
+    func applyImportedRunConfiguration(_ document: OperationalRunConfigDocument) {
         binaryPath = document.binaryPath
         inputFolder = document.inputFolder
         outputFolder = document.outputFolder
@@ -1768,7 +1768,7 @@ struct ContentView: View {
         scheduleStudyAreaExtentStatusRefresh()
         refreshReviewDiscoveryRoots()
     }
-    private func normalizedSpan(from region: MKCoordinateRegion?) -> MKCoordinateSpan {
+    func normalizedSpan(from region: MKCoordinateRegion?) -> MKCoordinateSpan {
         let fallback = MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3)
         guard let region = region else { return fallback }
         let lat = region.span.latitudeDelta
@@ -1779,7 +1779,7 @@ struct ContentView: View {
         return MKCoordinateSpan(latitudeDelta: validLat, longitudeDelta: validLon)
     }
 
-    private func updateMapRegion(center coordinate: CLLocationCoordinate2D, span: MKCoordinateSpan) {
+    func updateMapRegion(center coordinate: CLLocationCoordinate2D, span: MKCoordinateSpan) {
         var updatedRegion = mapRegion
         updatedRegion.center = coordinate
         updatedRegion.span = span
@@ -1788,7 +1788,7 @@ struct ContentView: View {
         }
     }
 
-    private func coordinateFromQuery(_ query: String) -> CLLocationCoordinate2D? {
+    func coordinateFromQuery(_ query: String) -> CLLocationCoordinate2D? {
         let allowed = CharacterSet(charactersIn: "0123456789NnSsEeWw.+-°,; \t")
         let sanitized = query.replacingOccurrences(of: "\n", with: " ")
         if sanitized.unicodeScalars.contains(where: { !allowed.contains($0) }) {
@@ -1833,14 +1833,14 @@ struct ContentView: View {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
-    private func directionMultiplier(for char: Character) -> Double? {
+    func directionMultiplier(for char: Character) -> Double? {
         let lower = String(char).lowercased()
         if lower == "s" || lower == "w" { return -1 }
         if lower == "n" || lower == "e" { return 1 }
         return nil
     }
 
-    private func cacheSearchResult(for key: String,
+    func cacheSearchResult(for key: String,
                                    coordinate: CLLocationCoordinate2D,
                                    span: MKCoordinateSpan?) {
         let normalizedKey = key.lowercased()
@@ -1853,11 +1853,11 @@ struct ContentView: View {
         }
     }
 
-    private func cachedSearchResult(for key: String) -> CachedSearchResult? {
+    func cachedSearchResult(for key: String) -> CachedSearchResult? {
         locationSearchState.cache[key.lowercased()]
     }
 
-    private func scheduleFallbackGeocode(for query: String,
+    func scheduleFallbackGeocode(for query: String,
                                          normalizedKey: String,
                                          referenceSearch: MKLocalSearch) {
         locationSearchState.fallbackWorkItem?.cancel()
@@ -1869,7 +1869,7 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: workItem)
     }
 
-    private func startFallbackGeocode(for query: String, normalizedKey: String) {
+    func startFallbackGeocode(for query: String, normalizedKey: String) {
         if #available(macOS 26, *) {
             startSecondaryLocalSearch(for: query, normalizedKey: normalizedKey)
         } else {
@@ -1887,7 +1887,7 @@ struct ContentView: View {
         }
     }
 
-    private func cancelPendingSearchWork() {
+    func cancelPendingSearchWork() {
         locationSearchState.fallbackWorkItem?.cancel()
         locationSearchState.fallbackWorkItem = nil
         if #available(macOS 26, *) {
@@ -1898,7 +1898,7 @@ struct ContentView: View {
     }
 
     @available(macOS 26, *)
-    private func startSecondaryLocalSearch(for query: String, normalizedKey: String) {
+    func startSecondaryLocalSearch(for query: String, normalizedKey: String) {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = [.address, .pointOfInterest]
@@ -1919,7 +1919,7 @@ struct ContentView: View {
         }
     }
 
-    private func handleFallbackResult(coordinate: CLLocationCoordinate2D?,
+    func handleFallbackResult(coordinate: CLLocationCoordinate2D?,
                                       name: String?,
                                       query: String,
                                       normalizedKey: String,
@@ -1940,7 +1940,7 @@ struct ContentView: View {
         }
     }
 
-    private func restoreOverlaySnapshotIfNeeded() {
+    func restoreOverlaySnapshotIfNeeded() {
         guard let snapshot = overlayState.overlaySnapshotBeforeRun else {
             outputStore.clearLoadingState()
             return
@@ -1958,7 +1958,7 @@ struct ContentView: View {
         }
     }
 
-    private func logSimulationSummary(_ summary: RunSummary) {
+    func logSimulationSummary(_ summary: RunSummary) {
         var lines: [String] = []
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -2005,7 +2005,7 @@ struct ContentView: View {
         appendToLog(lines.joined(separator: "\n"))
     }
 
-    private func appendOutputTailIfNeeded(from stdout: String) {
+    func appendOutputTailIfNeeded(from stdout: String) {
         let allLines = stdout.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         guard !allLines.isEmpty else { return }
         let filteredLines = allLines.filter {
@@ -2016,7 +2016,7 @@ struct ContentView: View {
         appendToLog("\n------ Cell2Fire Console Tail ------\n\(tail)\n")
     }
 
-    private func tableRow(label: String,
+    func tableRow(label: String,
                           count: Int?,
                           total: Int,
                           forceHundred: Bool = false) -> String {
@@ -2035,7 +2035,7 @@ struct ContentView: View {
         return "\(paddedLabel) \(paddedCount)    \(percentString)"
     }
 
-    private func fetchEarthEngineOverlay() {
+    func fetchEarthEngineOverlay() {
         guard !earthEngineState.isFetching else { return }
         guard canFetchEarthEngine else {
             earthEngineState.statusMessage = "Fill in the dataset, band, dates, key, and script path."
@@ -2189,7 +2189,7 @@ struct ContentView: View {
         }
     }
 
-    private func boundingBox(for region: MKCoordinateRegion) -> (west: Double, south: Double, east: Double, north: Double) {
+    func boundingBox(for region: MKCoordinateRegion) -> (west: Double, south: Double, east: Double, north: Double) {
         let halfLat = max(min(region.span.latitudeDelta / 2, 90), 0.0005)
         let halfLon = max(min(region.span.longitudeDelta / 2, 180), 0.0005)
         var north = region.center.latitude + halfLat
@@ -2203,7 +2203,7 @@ struct ContentView: View {
         return (west, south, east, north)
     }
 
-    private struct ASCIIGridHeader {
+    struct ASCIIGridHeader {
         let ncols: Int
         let nrows: Int
         let xOrigin: Double
@@ -2211,7 +2211,7 @@ struct ContentView: View {
         let cellSize: Double
     }
 
-    private func locateStudyGrid() -> URL? {
+    func locateStudyGrid() -> URL? {
         let trimmed = inputFolder.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let expanded = NSString(string: trimmed).expandingTildeInPath
@@ -2238,7 +2238,7 @@ struct ContentView: View {
         return nil
     }
 
-    private func readGridHeader(from url: URL) -> ASCIIGridHeader? {
+    func readGridHeader(from url: URL) -> ASCIIGridHeader? {
         guard let lines = readASCIIHeaderLines(from: url, maxBytes: 16_384, maxLines: 16) else {
             return nil
         }
@@ -2270,7 +2270,7 @@ struct ContentView: View {
         return ASCIIGridHeader(ncols: ncols, nrows: nrows, xOrigin: xll, yOrigin: yll, cellSize: cellSize)
     }
 
-    private func readASCIIHeaderLines(from url: URL,
+    func readASCIIHeaderLines(from url: URL,
                                       maxBytes: Int,
                                       maxLines: Int) -> [Substring]? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
@@ -2285,7 +2285,7 @@ struct ContentView: View {
         return Array(text.split(whereSeparator: \.isNewline).prefix(maxLines))
     }
 
-    private func rawBoundingBox(from header: ASCIIGridHeader) -> (west: Double, south: Double, east: Double, north: Double) {
+    func rawBoundingBox(from header: ASCIIGridHeader) -> (west: Double, south: Double, east: Double, north: Double) {
         let west = header.xOrigin
         let south = header.yOrigin
         let east = west + header.cellSize * Double(header.ncols)
@@ -2293,7 +2293,7 @@ struct ContentView: View {
         return (west, south, east, north)
     }
 
-    private func reprojectBoundingBox(header: ASCIIGridHeader,
+    func reprojectBoundingBox(header: ASCIIGridHeader,
                                       projection: ProjectionInfo,
                                       fileName: String,
                                       logFailures: Bool) -> (west: Double, south: Double, east: Double, north: Double)? {
@@ -2369,13 +2369,13 @@ struct ContentView: View {
         return (minLon, minLat, maxLon, maxLat)
     }
 
-    private func studyAreaBoundingBox() -> (west: Double, south: Double, east: Double, north: Double)? {
+    func studyAreaBoundingBox() -> (west: Double, south: Double, east: Double, north: Double)? {
         guard let gridURL = locateStudyGrid(),
               let header = readGridHeader(from: gridURL) else { return nil }
         return computeStudyAreaBoundingBox(gridURL: gridURL, header: header, logFailures: true)
     }
 
-    private func computeStudyAreaBoundingBox(gridURL: URL,
+    func computeStudyAreaBoundingBox(gridURL: URL,
                                              header: ASCIIGridHeader,
                                              logFailures: Bool) -> (west: Double, south: Double, east: Double, north: Double)? {
         let raw = rawBoundingBox(from: header)
@@ -2403,7 +2403,7 @@ struct ContentView: View {
         }
     }
 
-    private func sanitizedDEMFilename(_ proposed: String) -> String {
+    func sanitizedDEMFilename(_ proposed: String) -> String {
         var name = proposed.trimmingCharacters(in: .whitespacesAndNewlines)
         if name.isEmpty { name = "elevation.asc" }
         let invalid = CharacterSet(charactersIn: "/\\:")
@@ -2414,1440 +2414,5 @@ struct ContentView: View {
         return name
     }
 
-    private func run() {
-        normalizeWeatherInterval()
-        normalizeSimulationParameters()
-
-        let binaryResolution = resolveBinaryPath(allowAutofix: true)
-        guard case let .resolved(normalizedBinary) = binaryResolution else {
-            appendToLog("Cannot run: \(binaryResolution.failureMessage)")
-            return
-        }
-
-        if let error = validateEnvironment(skipBinaryCheck: true) {
-            appendToLog("Cannot run: \(error)")
-            return
-        }
-
-        overlayState.overlayLoadVersion &+= 1
-        let currentOverlayVersion = overlayState.overlayLoadVersion
-        overlayState.overlaySnapshotBeforeRun = OverlaySnapshot(overlay: overlayState.rosOverlay,
-                                                   asciiURL: overlayState.lastOverlayASCIIURL,
-                                                   sourceURL: overlayState.lastOverlaySourceURL,
-                                                   grid: overlayState.lastOverlayGrid)
-        overlayState.rosOverlay = nil
-        overlayState.lastOverlayASCIIURL = nil
-        overlayState.lastOverlaySourceURL = nil
-        overlayState.lastOverlayGrid = nil
-        refreshIgnitionMarkers(with: nil)
-        DispatchQueue.main.async {
-            mapController.clearOverlay()
-        }
-
-        simulationState.logFileURL = prepareLogFile()
-        simulationState.log = "Starting \(simulationEngineMode.label)…\n"
-        resetLogFile(with: simulationState.log)
-
-        let trimmedOutput = outputFolder.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedOutput.isEmpty else {
-            appendToLog("Choose an output folder before running.")
-            DispatchQueue.main.async { showingOutputPicker = true }
-            return
-        }
-
-        let outputArgument = NSString(string: trimmedOutput).expandingTildeInPath
-        do {
-            try FileManager.default.createDirectory(atPath: outputArgument, withIntermediateDirectories: true)
-        } catch {
-            appendToLog("Failed to prepare output folder: \(error.localizedDescription)")
-            return
-        }
-
-        simulationState.isRunning = true
-        let runStartedAt = Date()
-        let riskLinkCoordinate = mapRegion.center
-        let riskLinkRadiusMeters = indiaRiskStore.radiusMeters
-        let logFilePath = simulationState.logFileURL?.path
-
-        let normalizedInput = NSString(string: inputFolder).expandingTildeInPath
-        let resolvedOutputDir = resolvedOutputDirectory(for: normalizedInput, customOutput: outputArgument)
-        let runConfiguration = RunConfigurationSnapshot(
-            binaryPath: normalizedBinary,
-            inputFolder: normalizedInput,
-            outputDirectory: resolvedOutputDir,
-            simulatorCode: simulationState.selectedSim,
-            simulatorLabel: simulatorLabel(for: simulationState.selectedSim),
-            scenarioName: scenarioStore.selectedScenario?.name,
-            scenarioLabel: scenarioStore.selectedScenario?.tcfdScenarioLabel ?? "Ad hoc wildfire run",
-            scenarioPathway: scenarioStore.selectedScenario?.pathwayLabel,
-            scenarioHorizon: scenarioStore.selectedScenario?.horizonLabel,
-            includeROS: simulationState.includeRos,
-            weatherPeriodMinutes: simulationState.weatherPeriodMinutes,
-            outputFormat: simulationState.outputFormat.rawValue,
-            numberOfSimulations: simulationState.numberOfSimulations,
-            numberOfThreads: simulationState.numberOfThreads,
-            seed: simulationState.seedValue
-        )
-
-        let request = SimulationEngineRequest(
-            mode: simulationEngineMode,
-            legacyBinaryPath: normalizedBinary,
-            simulatorCode: simulationState.selectedSim,
-            inputFolder: normalizedInput,
-            outputFolder: outputArgument,
-            includeROS: simulationState.includeRos,
-            weatherPeriodMinutes: simulationState.weatherPeriodMinutes,
-            firePeriodLength: 1.0,
-            outputFormat: simulationState.outputFormat,
-            numberOfSimulations: simulationState.numberOfSimulations,
-            numberOfThreads: simulationState.numberOfThreads,
-            seed: simulationState.seedValue
-        )
-
-        simulationEngineService.run(request: request,
-                                    onStandardOutput: { chunk in
-                                        appendToLog(chunk)
-                                    },
-                                    onStandardError: { chunk in
-                                        appendToLog("[stderr] \(chunk)")
-                                    }) { result in
-            simulationState.isRunning = false
-            switch result {
-            case .success(let output):
-                appendToLog("[Engine] Completed with \(output.engineLabel).\n")
-                appendToLog("Exit code: \(output.terminationStatus)\n")
-                if let runArtifactURL = output.runArtifactURL {
-                    appendToLog("[Artifact] Run artifact: \(runArtifactURL.path)\n")
-                }
-                appendOutputTailIfNeeded(from: output.stdout)
-                simulationState.hasSuccessfulRun = true
-                simulationState.lastOutputDirectory = resolvedOutputDir
-                loadOutputTree(from: resolvedOutputDir)
-                overlayState.overlaySnapshotBeforeRun = nil
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let completedAt = Date()
-                    let rosStats = analyzeRateOfSpread(at: resolvedOutputDir)
-                    let summary = buildRunSummary(from: output.stdout,
-                                                  rosStats: rosStats,
-                                                  timestamp: completedAt)
-                    let persistenceResult: Result<PersistedTCFDBundleResult, Error>? = summary.map { parsedSummary in
-                        Result {
-                            try artifactService.persistTCFDBundle(summary: parsedSummary,
-                                                                   stdout: output.stdout,
-                                                                   stderr: output.stderr,
-                                                                   startedAt: runStartedAt,
-                                                                   completedAt: completedAt,
-                                                                   configuration: runConfiguration,
-                                                                   logFilePath: logFilePath)
-                        }
-                    }
-                    let indiaRiskPersistenceResult: Result<IndiaWildfireRiskLinkResult?, Error>?
-                    if case let .success(bundle)? = persistenceResult {
-                        indiaRiskPersistenceResult = Result {
-                            try persistIndiaWildfireAssessmentsIfPossible(
-                                runID: bundle.runID,
-                                configuration: runConfiguration,
-                                siteCoordinate: riskLinkCoordinate,
-                                radiusMeters: riskLinkRadiusMeters,
-                                ignitionCell: summary?.simulations.first?.ignitionCell
-                            )
-                        }
-                    } else {
-                        indiaRiskPersistenceResult = nil
-                    }
-                DispatchQueue.main.async {
-                        if let summary {
-                            simulationState.runSummaries.insert(summary, at: 0)
-                            if simulationState.runSummaries.count > 12 {
-                                simulationState.runSummaries.removeLast(simulationState.runSummaries.count - 12)
-                            }
-                            if let ignition = summary.simulations.first?.ignitionCell {
-                                overlayState.currentIgnitionCell = ignition
-                            }
-                            logSimulationSummary(summary)
-                        }
-                        if let persistenceResult {
-                            switch persistenceResult {
-                            case .success(let bundle):
-                                reviewStore.updateDiscoveryRoots([URL(fileURLWithPath: resolvedOutputDir)])
-                                appendToLog("[TCFD] Persisted run package to \(bundle.bundleDirectory.path).")
-                                appendToLog("[TCFD] Run evidence report saved to \(bundle.reportURL.path).")
-                            case .failure(let error):
-                                appendToLog("[TCFD] Failed to write run evidence package: \(error.localizedDescription)")
-                            }
-                        } else {
-                            appendToLog("[TCFD] Run completed, but the summary could not be parsed for packaging.")
-                        }
-                        if let indiaRiskPersistenceResult {
-                            switch indiaRiskPersistenceResult {
-                            case .success(.some(let linkResult)):
-                                appendToLog("[India Risk] Stored \(linkResult.storedCount) wildfire assessments for nearby buildings (\(linkResult.highRiskCount) high, \(linkResult.mediumRiskCount) medium, \(linkResult.lowRiskCount) low).")
-                                indiaRiskStore.refreshDatabaseStatus()
-                                indiaRiskStore.lookupNearbyBuildings(latitude: riskLinkCoordinate.latitude,
-                                                                     longitude: riskLinkCoordinate.longitude)
-                            case .success(.none):
-                                break
-                            case .failure(let error):
-                                appendToLog("[India Risk] Failed to store wildfire linkages: \(error.localizedDescription)")
-                            }
-                        }
-                    }
-                }
-                postProcessRateOfSpread(at: resolvedOutputDir, desiredFormat: simulationState.outputFormat)
-                updateMapOverlay(at: resolvedOutputDir, expectedVersion: currentOverlayVersion)
-            case .failure(let error):
-                appendToLog("Error: \(error.localizedDescription)")
-                restoreOverlaySnapshotIfNeeded()
-            }
-        }
-    }
-
-    private func handleInputFolder(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            if let folder = urls.first { inputFolder = folder.path }
-        case .failure(let error):
-            appendToLog("Input folder picker error: \(error.localizedDescription)")
-        }
-    }
-
-    private func handleOutputFolder(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            if let folder = urls.first {
-                let path = folder.path
-                outputFolder = path
-                simulationState.lastOutputDirectory = path
-                refreshOutputTree()
-            }
-        case .failure(let error):
-            appendToLog("Output folder picker error: \(error.localizedDescription)")
-        }
-    }
-
-    private func handleBinarySelection(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            if let file = urls.first { binaryPath = file.path }
-        case .failure(let error):
-            appendToLog("Binary picker error: \(error.localizedDescription)")
-        }
-    }
-
-    private func refreshOutputTree() {
-        rebuildOutputTree(rateOfSpreadBase: simulationState.lastOutputDirectory)
-    }
-
-    private func loadOutputTree(from basePath: String) {
-        rebuildOutputTree(rateOfSpreadBase: basePath)
-    }
-
-    private func rebuildOutputTree(rateOfSpreadBase: String?) {
-        outputStore.rebuild(rateOfSpreadBase: rateOfSpreadBase,
-                            earthEngineOverlaysDirectory: overlaysDirectory(),
-                            limits: outputTreeLimits)
-    }
-
-    private func selectOutputNode(_ node: OutputNode, zoomAfterSelection: Bool) {
-        guard node.isSelectable else { return }
-        loadOverlay(from: node.url,
-                    zoomAfterLoad: zoomAfterSelection,
-                    successMessage: "Loaded overlay from")
-    }
-
-        private func reloadIgnitionCells() {
-        let trimmed = inputFolder.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            overlayState.defaultIgnitionCells = []
-            if overlayState.currentIgnitionCell == nil {
-                refreshIgnitionMarkers(with: overlayState.rosOverlay)
-            }
-            return
-        }
-
-        let normalizedFolder = NSString(string: trimmed).expandingTildeInPath
-        let ignitionURL = URL(fileURLWithPath: normalizedFolder).appendingPathComponent("Ignitions.csv")
-        guard FileManager.default.fileExists(atPath: ignitionURL.path) else {
-            overlayState.defaultIgnitionCells = []
-            if overlayState.currentIgnitionCell == nil {
-                refreshIgnitionMarkers(with: overlayState.rosOverlay)
-            }
-            return
-        }
-
-        do {
-            let contents = try String(contentsOf: ignitionURL, encoding: .utf8)
-            let lines = contents.split(whereSeparator: \.isNewline)
-            let dataRows = lines.dropFirst()
-            var cells: [Int] = []
-            for row in dataRows {
-                let columns = row.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-                for column in columns.reversed() {
-                    if let value = Int(column) {
-                        cells.append(value)
-                        break
-                    }
-                }
-            }
-            overlayState.defaultIgnitionCells = cells
-            if overlayState.currentIgnitionCell == nil {
-                overlayState.currentIgnitionCell = cells.first
-            } else {
-                refreshIgnitionMarkers(with: overlayState.rosOverlay)
-            }
-        } catch {
-            overlayState.defaultIgnitionCells = []
-        }
-    }
-
-    private func refreshIgnitionMarkers(with overlay: RateOfSpreadOverlay?) {
-        guard let overlay = overlay else {
-            overlayState.ignitionMarkers = []
-            return
-        }
-        guard let cellID = overlayState.activeIgnitionCell,
-              let coordinate = overlay.coordinate(forCellID: cellID) else {
-            overlayState.ignitionMarkers = []
-            return
-        }
-        overlayState.ignitionMarkers = [IgnitionMarker(coordinate: coordinate)]
-    }
-
-    private func normalizeWeatherInterval() {
-        let digitsOnly = simulationState.weatherPeriodInput.filter { $0.isNumber }
-        guard let value = Int(digitsOnly), value >= 10 else {
-            simulationState.weatherPeriodMinutes = 10
-            simulationState.weatherPeriodInput = "10"
-            return
-        }
-
-        if value % 10 != 0 {
-            simulationState.weatherPeriodMinutes = 10
-            simulationState.weatherPeriodInput = "10"
-        } else {
-            simulationState.weatherPeriodMinutes = value
-            simulationState.weatherPeriodInput = "\(value)"
-        }
-    }
-
-    private func normalizeSimulationParameters() {
-        if let sims = Int(simulationState.numberOfSimulationsInput), sims >= 1 {
-            simulationState.numberOfSimulations = sims
-        } else {
-            simulationState.numberOfSimulations = 1
-            simulationState.numberOfSimulationsInput = "1"
-        }
-
-        if let threads = Int(simulationState.numberOfThreadsInput), threads >= 1 {
-            simulationState.numberOfThreads = threads
-        } else {
-            simulationState.numberOfThreads = 7
-            simulationState.numberOfThreadsInput = "7"
-        }
-
-        if let seed = Int(filterSeedInput(simulationState.seedInput)) {
-            simulationState.seedValue = seed
-            simulationState.seedInput = "\(seed)"
-        } else {
-            simulationState.seedValue = 123
-            simulationState.seedInput = "123"
-        }
-    }
-
-    private func resolveBinaryPath(allowAutofix: Bool) -> BinaryResolution {
-        let fm = FileManager.default
-        let trimmed = binaryPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        var seen = Set<String>()
-        var candidates: [String] = []
-
-        if trimmed.isEmpty {
-            candidates.append(preferredBinaryPath)
-            candidates.append(contentsOf: legacyBinaryPaths)
-        } else {
-            if legacyBinaryPaths.contains(trimmed) {
-                candidates.append(preferredBinaryPath)
-            }
-            candidates.append(trimmed)
-        }
-
-        for candidate in candidates where !candidate.isEmpty && !seen.contains(candidate) {
-            seen.insert(candidate)
-            let expanded = NSString(string: candidate).expandingTildeInPath
-            var isDir: ObjCBool = false
-            if fm.fileExists(atPath: expanded, isDirectory: &isDir),
-               !isDir.boolValue,
-               fm.isExecutableFile(atPath: expanded) {
-                if allowAutofix, candidate != binaryPath {
-                    binaryPath = candidate
-                }
-                return .resolved(expanded)
-            }
-        }
-
-        return trimmed.isEmpty ? .needsPath : .invalid
-    }
-
-    private func validateEnvironment(skipBinaryCheck: Bool = false) -> String? {
-        if !skipBinaryCheck {
-            let binaryStatus = resolveBinaryPath(allowAutofix: false)
-            switch binaryStatus {
-            case .resolved:
-                break
-            case .needsPath, .invalid:
-                return binaryStatus.failureMessage
-            }
-        }
-
-        let fm = FileManager.default
-        var isDir: ObjCBool = false
-        let inputFullPath = NSString(string: inputFolder).expandingTildeInPath
-        guard fm.fileExists(atPath: inputFullPath, isDirectory: &isDir), isDir.boolValue else {
-            return "Input folder not found."
-        }
-        let trimmedOutput = outputFolder.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedOutput.isEmpty {
-            return "Select an output folder."
-        }
-        let parent = (trimmedOutput as NSString).expandingTildeInPath
-        let parentURL = URL(fileURLWithPath: parent).deletingLastPathComponent()
-        if !fm.isWritableFile(atPath: parentURL.path) {
-            return "Output folder location is not writable."
-        }
-        return nil
-    }
-
-    private func resolvedOutputDirectory(for input: String, customOutput: String?) -> String {
-        if let customOutput, !customOutput.isEmpty {
-            return NSString(string: customOutput).expandingTildeInPath
-        }
-        var normalized = input
-        if !normalized.hasSuffix("/") {
-            normalized += "/"
-        }
-        return NSString(string: normalized + "simOuts").expandingTildeInPath
-    }
-
-    private func rateOfSpreadDirectory(basePath: String) -> URL {
-        let baseURL = URL(fileURLWithPath: basePath)
-        if baseURL.lastPathComponent.compare("RateOfSpread", options: .caseInsensitive) == .orderedSame {
-            return baseURL
-        }
-        return baseURL.appendingPathComponent("RateOfSpread")
-    }
-
-    private func latestROSFile(from files: [URL]) -> URL? {
-        let ascFiles = files.filter { $0.pathExtension.lowercased() == "asc" }
-        return ascFiles.max { lhs, rhs in
-            let lDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
-            let rDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
-            return lDate < rDate
-        }
-    }
-
-    private func persistIndiaWildfireAssessmentsIfPossible(runID: String,
-                                                           configuration: RunConfigurationSnapshot,
-                                                           siteCoordinate: CLLocationCoordinate2D,
-                                                           radiusMeters: Double,
-                                                           ignitionCell: Int?) throws -> IndiaWildfireRiskLinkResult? {
-        let rosDir = rateOfSpreadDirectory(basePath: configuration.outputDirectory)
-        guard let contents = try? FileManager.default.contentsOfDirectory(at: rosDir,
-                                                                          includingPropertiesForKeys: [.contentModificationDateKey],
-                                                                          options: .skipsHiddenFiles),
-              let latest = latestROSFile(from: contents),
-              let normalizedASCII = prepareOverlayASCII(for: latest),
-              let grid = parseRateOfSpreadGrid(from: normalizedASCII) else {
-            return nil
-        }
-
-        let request = IndiaWildfireRiskLinkRequest(
-            runID: runID,
-            scenarioLabel: configuration.scenarioLabel,
-            simulatorLabel: configuration.simulatorLabel,
-            siteLatitude: siteCoordinate.latitude,
-            siteLongitude: siteCoordinate.longitude,
-            searchRadiusMeters: radiusMeters,
-            outputDirectory: configuration.outputDirectory,
-            sourceRasterPath: normalizedASCII.path,
-            ignitionCell: ignitionCell
-        )
-        let linker = IndiaWildfireRiskLinker(store: indiaRiskStore)
-        return try linker.persistLatestWildfireAssessments(
-            request: request,
-            grid: IndiaWildfireRiskGrid(
-                width: grid.width,
-                height: grid.height,
-                minLon: grid.minLon,
-                maxLon: grid.maxLon,
-                minLat: grid.minLat,
-                maxLat: grid.maxLat,
-                maxValue: grid.maxValue,
-                values: grid.values
-            )
-        )
-    }
-
-    private func restoreLatestPersistedRunIfNeeded() {
-        guard !simulationState.hasSuccessfulRun, simulationState.runSummaries.isEmpty, restoredRunID == nil,
-              let latest = reviewStore.bundles.first else {
-            return
-        }
-        restorePersistedRunState(from: latest)
-    }
-
-    private func restorePersistedRunState(from bundle: TCFDRunArtifactBundle) {
-        guard restoredRunID != bundle.runID else { return }
-        let summaryURL = URL(fileURLWithPath: bundle.summaryJSONURL)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let data = try? Data(contentsOf: summaryURL),
-              let persisted = try? decoder.decode(PersistedRunSummaryDocument.self, from: data) else {
-            return
-        }
-
-        let restoredSummary = RunSummary(
-            timestamp: persisted.timestamp,
-            simulations: persisted.simulations.map { simulation in
-                SimulationStats(
-                    simulationIndex: simulation.simulationIndex,
-                    weatherFile: simulation.weatherFile,
-                    ignitionCell: simulation.ignitionCell,
-                    totalCells: simulation.totalCells,
-                    available: simulation.available,
-                    burnt: simulation.burnt,
-                    nonBurnable: simulation.nonBurnable,
-                    firebreak: simulation.firebreak,
-                    highestROS: simulation.highestROS,
-                    lowestROS: simulation.lowestROS
-                )
-            }
-        )
-
-        restoredRunID = bundle.runID
-        simulationState.hasSuccessfulRun = true
-        simulationState.lastOutputDirectory = bundle.outputDirectory
-        simulationState.runSummaries = [restoredSummary]
-        overlayState.currentIgnitionCell = restoredSummary.simulations.first?.ignitionCell
-        loadOutputTree(from: bundle.outputDirectory)
-    }
-
-    private func projectionInfo(for ascURL: URL, logFailures: Bool = true) -> ProjectionInfo? {
-        let prjURL = ascURL.deletingPathExtension().appendingPathExtension("prj")
-        if let data = try? Data(contentsOf: prjURL),
-           let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !text.isEmpty {
-            let upper = text.uppercased()
-            let isWGS = upper.contains("WGS_1984") || upper.contains("WGS84") || upper.contains("4326")
-            return ProjectionInfo(srs: text, isWGS84: isWGS)
-        }
-        if useOverrideCRS {
-            let normalized = normalizeCRSCode(overrideCRSCode)
-            let isWGS = normalized.caseInsensitiveCompare("EPSG:4326") == .orderedSame
-            return ProjectionInfo(srs: normalized, isWGS84: isWGS)
-        }
-        if let inferred = heuristicallyInferProjection(for: ascURL, logFailures: logFailures) {
-            return inferred
-        }
-        return nil
-    }
-
-    private func heuristicallyInferProjection(for ascURL: URL, logFailures: Bool) -> ProjectionInfo? {
-        guard let header = asciiHeaderMetadata(for: ascURL),
-              let xOrigin = header.xOrigin,
-              let yOrigin = header.yOrigin else {
-            return nil
-        }
-
-        if (-180.0...180.0).contains(xOrigin) && (-90.0...90.0).contains(yOrigin) {
-            return ProjectionInfo(srs: "EPSG:4326", isWGS84: true)
-        }
-
-        if isLikelyDutchRD(easting: xOrigin, northing: yOrigin) {
-            if logFailures {
-            appendToLog("[CRS] No PRJ for \(ascURL.lastPathComponent); assuming Dutch RD New (EPSG:28992). Use the CRS override if this assumption is incorrect.")
-            }
-            return ProjectionInfo(srs: "EPSG:28992", isWGS84: false)
-        }
-
-        return nil
-    }
-
-    private func asciiHeaderMetadata(for ascURL: URL) -> ASCIIHeaderMetadata? {
-        guard let lines = readASCIIHeaderLines(from: ascURL, maxBytes: 16_384, maxLines: 12) else {
-            return nil
-        }
-        var xOrigin: Double?
-        var yOrigin: Double?
-        var cellSize: Double?
-        var inspected = 0
-
-        for rawLine in lines {
-            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-            let lower = trimmed.lowercased()
-            if xOrigin == nil && (lower.hasPrefix("xllcorner") || lower.hasPrefix("xllcenter")) {
-                xOrigin = firstDouble(in: trimmed)
-            } else if yOrigin == nil && (lower.hasPrefix("yllcorner") || lower.hasPrefix("yllcenter")) {
-                yOrigin = firstDouble(in: trimmed)
-            } else if cellSize == nil && lower.hasPrefix("cellsize") {
-                cellSize = firstDouble(in: trimmed)
-            }
-
-            inspected += 1
-            if (xOrigin != nil && yOrigin != nil && cellSize != nil) || inspected >= 12 {
-                break
-            }
-        }
-
-        if xOrigin == nil && yOrigin == nil && cellSize == nil {
-            return nil
-        }
-        return ASCIIHeaderMetadata(xOrigin: xOrigin, yOrigin: yOrigin, cellSize: cellSize)
-    }
-
-    private func isLikelyDutchRD(easting: Double, northing: Double) -> Bool {
-        let eastingRange = 0.0...300_000.0
-        let northingRange = 250_000.0...630_000.0
-        return eastingRange.contains(easting) && northingRange.contains(northing)
-    }
-
-    private func normalizeCRSCode(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "EPSG:4326" }
-        if trimmed.uppercased().hasPrefix("EPSG:") {
-            return trimmed.uppercased()
-        }
-        if Int(trimmed) != nil {
-            return "EPSG:\(trimmed)"
-        }
-        return trimmed
-    }
-
-    private func exportKMZ() {
-        guard let outputDir = simulationState.lastOutputDirectory else {
-            appendToLog("[KMZ] Run Cell2Fire first so there is a RateOfSpread output to export.")
-            return
-        }
-        if simulationState.isExportingKMZ { return }
-        simulationState.isExportingKMZ = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = createKMZ(from: outputDir)
-            DispatchQueue.main.async {
-                simulationState.isExportingKMZ = false
-                switch result {
-                case .success(let url):
-                    appendToLog("[KMZ] Saved overlay to \(url.path).")
-                case .failure(let error):
-                    appendToLog("[KMZ] Export failed: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-
-    private func createKMZ(from outputDirectory: String) -> Result<URL, Error> {
-        let rosDir = rateOfSpreadDirectory(basePath: outputDirectory)
-        let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(at: rosDir,
-                                                         includingPropertiesForKeys: [.contentModificationDateKey],
-                                                         options: .skipsHiddenFiles) else {
-            return .failure(ExportError(message: "RateOfSpread folder not found at \(rosDir.path)."))
-        }
-        guard let latestASC = latestROSFile(from: contents) else {
-            return .failure(ExportError(message: "No ROS *.asc files found under \(rosDir.path)."))
-        }
-
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
-        let assignedTIF = tempDir.appendingPathComponent("ros-\(UUID().uuidString)-assigned.tif")
-        guard let projection = projectionInfo(for: latestASC) else {
-            return .failure(ExportError(message: "Unable to determine the CRS for \(latestASC.lastPathComponent). Enable the CRS override in Output Explorer."))
-        }
-        do {
-            try runGDALTranslate(arguments: ["-a_srs", projection.srs, latestASC.path, assignedTIF.path])
-        } catch {
-            return .failure(error)
-        }
-
-        let wgs84TIF: URL
-        if projection.isWGS84 {
-            wgs84TIF = assignedTIF
-        } else {
-            let reprojected = tempDir.appendingPathComponent("ros-\(UUID().uuidString)-wgs84.tif")
-            do {
-                try runGDALWarp(arguments: ["-s_srs", projection.srs, "-t_srs", "EPSG:4326", assignedTIF.path, reprojected.path])
-            } catch {
-                try? fm.removeItem(at: assignedTIF)
-                return .failure(error)
-            }
-            try? fm.removeItem(at: assignedTIF)
-            wgs84TIF = reprojected
-        }
-
-        let kmzURL = latestASC.deletingPathExtension().appendingPathExtension("kmz")
-
-        do {
-            try runGDALTranslate(arguments: ["-of", "KMLSUPEROVERLAY", wgs84TIF.path, kmzURL.path])
-            try? fm.removeItem(at: wgs84TIF)
-            return .success(kmzURL)
-        } catch {
-            try? fm.removeItem(at: wgs84TIF)
-            return .failure(error)
-        }
-    }
-
-    private func runGDALTranslate(arguments: [String]) throws {
-        guard let executable = locateGDALTranslate() else {
-            throw ExportError(message: "gdal_translate not found. Install GDAL (e.g., `brew install gdal`).")
-        }
-        try runGDALProcess(executable: executable, arguments: arguments, label: "gdal_translate")
-    }
-
-    private func runGDALWarp(arguments: [String]) throws {
-        guard let executable = locateGDALWarp() else {
-            throw ExportError(message: "gdalwarp not found. Install GDAL (e.g., `brew install gdal`).")
-        }
-        try runGDALProcess(executable: executable, arguments: arguments, label: "gdalwarp")
-    }
-
-    private func runGDALProcess(executable: String, arguments: [String], label: String) throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = arguments
-        let errPipe = Pipe()
-        process.standardError = errPipe
-        try process.run()
-        process.waitUntilExit()
-        if process.terminationStatus != 0 {
-            let errorOutput = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            throw ExportError(message: errorOutput.isEmpty ? "\(label) exited with \(process.terminationStatus)" : errorOutput)
-        }
-    }
-
-    private func locateGDALTranslate() -> String? {
-        locateGDALBinary(name: "gdal_translate", cache: &ContentView.gdalTranslateCache)
-    }
-
-    private func locateGDALWarp() -> String? {
-        locateGDALBinary(name: "gdalwarp", cache: &ContentView.gdalWarpCache)
-    }
-
-    private func locateGDALTransform() -> String? {
-        locateGDALBinary(name: "gdaltransform", cache: &ContentView.gdalTransformCache)
-    }
-
-    private func locateGDALBinary(name: String, cache: inout String?) -> String? {
-        if let cached = cache {
-            return cached
-        }
-        let fm = FileManager.default
-        var candidates = [
-            "/opt/homebrew/bin/\(name)",
-            "/usr/local/bin/\(name)",
-            "/usr/bin/\(name)"
-        ]
-        if let pathEnv = ProcessInfo.processInfo.environment["PATH"] {
-            for dir in pathEnv.split(separator: ":") {
-                let full = String(dir) + "/\(name)"
-                candidates.append(full)
-            }
-        }
-        for path in candidates {
-            if fm.isExecutableFile(atPath: path) {
-                cache = path
-                return path
-            }
-        }
-        return nil
-    }
-
-    private func postProcessRateOfSpread(at outputDirectory: String, desiredFormat: OutputFormat) {
-        guard desiredFormat == .tif else { return }
-
-        DispatchQueue.global(qos: .utility).async {
-            let rosDir = rateOfSpreadDirectory(basePath: outputDirectory)
-            let fm = FileManager.default
-
-            guard let contents = try? fm.contentsOfDirectory(at: rosDir,
-                                                             includingPropertiesForKeys: [.contentModificationDateKey],
-                                                             options: .skipsHiddenFiles) else {
-                DispatchQueue.main.async {
-                    appendToLog("[ROS conversion] RateOfSpread folder not found at \(rosDir.path).")
-                }
-                return
-            }
-
-            guard let latest = latestROSFile(from: contents) else {
-                DispatchQueue.main.async {
-                    appendToLog("[ROS conversion] No ROSFile*.asc outputs found in \(rosDir.path).")
-                }
-                return
-            }
-
-            let tifURL = latest.deletingPathExtension().appendingPathExtension("tif")
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["gdal_translate", "-of", "GTiff", latest.path, tifURL.path]
-            let errPipe = Pipe()
-            process.standardError = errPipe
-
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let errorOutput = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                DispatchQueue.main.async {
-                    if process.terminationStatus == 0 {
-                        appendToLog("[ROS conversion] GeoTIFF saved to \(tifURL.path).")
-                    } else {
-                        appendToLog("[ROS conversion] gdal_translate failed (\(process.terminationStatus)). \(errorOutput)")
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    appendToLog("[ROS conversion] Failed to run gdal_translate: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-
-    private func updateMapOverlay(at outputDirectory: String, expectedVersion: Int? = nil) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let rosDir = rateOfSpreadDirectory(basePath: outputDirectory)
-            let fm = FileManager.default
-
-            guard let contents = try? fm.contentsOfDirectory(at: rosDir,
-                                                             includingPropertiesForKeys: [.contentModificationDateKey],
-                                                             options: .skipsHiddenFiles),
-                  let latest = latestROSFile(from: contents) else {
-                DispatchQueue.main.async {
-                    appendToLog("[Map] RateOfSpread outputs not found; overlay skipped.")
-                }
-                return
-            }
-
-            DispatchQueue.main.async {
-                loadOverlay(from: latest,
-                            zoomAfterLoad: true,
-                            successMessage: "Updated overlay from",
-                            expectedVersion: expectedVersion)
-            }
-        }
-    }
-
-    private func rebuildOverlay() {
-        let palette = rosPalette.colorStops
-        let alphaScale = rosOpacity
-
-        if let cachedGrid = overlayState.lastOverlayGrid {
-            DispatchQueue.global(qos: .userInitiated).async {
-                guard let overlay = makeOverlay(from: cachedGrid,
-                                                colorStops: palette,
-                                                alphaScale: alphaScale) else {
-                    DispatchQueue.main.async {
-                        appendToLog("[Map] Unable to refresh the ROS overlay for the selected theme.")
-                    }
-                    return
-                }
-
-                DispatchQueue.main.async {
-                    applyRenderedOverlay(overlay,
-                                         zoomAfterLoad: false,
-                                         successMessage: nil,
-                                         sourceFile: nil,
-                                         animated: true)
-                }
-            }
-            return
-        }
-
-        guard let asciiURL = overlayState.lastOverlayASCIIURL else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let grid = parseRateOfSpreadGrid(from: asciiURL),
-                  let overlay = makeOverlay(from: grid,
-                                            colorStops: palette,
-                                            alphaScale: alphaScale) else {
-                DispatchQueue.main.async {
-                    appendToLog("[Map] Unable to refresh the ROS overlay for the selected theme.")
-                }
-                return
-            }
-
-            DispatchQueue.main.async {
-                overlayState.lastOverlayGrid = grid
-                applyRenderedOverlay(overlay,
-                                     zoomAfterLoad: false,
-                                     successMessage: nil,
-                                     sourceFile: nil,
-                                     animated: true)
-            }
-        }
-    }
-
-    private func loadOverlay(from sourceFile: URL,
-                             zoomAfterLoad: Bool,
-                             successMessage: String,
-                             expectedVersion: Int? = nil) {
-        let palette = rosPalette.colorStops
-        let alphaScale = rosOpacity
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let normalizedASCII = prepareOverlayASCII(for: sourceFile) else {
-                return
-            }
-
-            guard let grid = parseRateOfSpreadGrid(from: normalizedASCII) else {
-                DispatchQueue.main.async {
-                    appendToLog("[Map] Failed to parse \(sourceFile.lastPathComponent).")
-                }
-                return
-            }
-
-            guard let overlay = makeOverlay(from: grid,
-                                            colorStops: palette,
-                                            alphaScale: alphaScale) else {
-                DispatchQueue.main.async {
-                    appendToLog("[Map] Failed to build overlay for \(sourceFile.lastPathComponent).")
-                }
-                return
-            }
-
-            DispatchQueue.main.async {
-                if let expectedVersion, expectedVersion != overlayState.overlayLoadVersion {
-                    return
-                }
-                overlayState.lastOverlayASCIIURL = normalizedASCII
-                overlayState.lastOverlaySourceURL = sourceFile
-                overlayState.lastOverlayGrid = grid
-                applyRenderedOverlay(overlay,
-                                     zoomAfterLoad: zoomAfterLoad,
-                                     successMessage: successMessage,
-                                     sourceFile: sourceFile,
-                                     animated: false)
-                if expectedVersion != nil {
-                    refreshOutputTree()
-                }
-            }
-        }
-    }
-
-    private func applyRenderedOverlay(_ overlay: RateOfSpreadOverlay,
-                                      zoomAfterLoad: Bool,
-                                      successMessage: String?,
-                                      sourceFile: URL?,
-                                      animated: Bool) {
-        let update = {
-            overlayState.rosOverlay = overlay
-        }
-
-        if animated {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                update()
-            }
-        } else {
-            update()
-        }
-
-        refreshIgnitionMarkers(with: overlay)
-        if zoomAfterLoad {
-            focusMap(on: overlay)
-        }
-        if let message = successMessage, let source = sourceFile {
-            appendToLog("[Map] \(message) \(source.lastPathComponent).")
-        }
-    }
-
-    private func focusMap(on overlay: RateOfSpreadOverlay) {
-        let latExtent = max(overlay.maxLat - overlay.minLat, 0.005)
-        let lonExtent = max(overlay.maxLon - overlay.minLon, 0.005)
-        let span = MKCoordinateSpan(latitudeDelta: latExtent * 1.25,
-                                    longitudeDelta: lonExtent * 1.25)
-        let region = MKCoordinateRegion(center: overlay.coordinate, span: span)
-        withAnimation(.easeInOut(duration: 0.35)) {
-            mapRegion = region
-        }
-    }
-
-    private func simulationField(title: String,
-                                 binding: Binding<String>,
-                                 placeholder: String,
-                                 onValueChange: @escaping (String) -> Void,
-                                 infoAction: @escaping () -> Void) -> some View {
-        HStack {
-            HStack(spacing: 4) {
-                Text(title)
-                Button {
-                    infoAction()
-                } label: {
-                    Image(systemName: "info.circle")
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
-            TextField(placeholder, text: binding)
-                .frame(width: 100)
-                .multilineTextAlignment(.trailing)
-                .onChange(of: binding.wrappedValue) { _, newValue in
-                    DispatchQueue.main.async {
-                        onValueChange(newValue)
-                    }
-                }
-                .themedField(background: theme.fieldBackground, textColor: theme.textColor)
-        }
-    }
-
-    private func filterSeedInput(_ value: String) -> String {
-        var filtered = ""
-        for (index, character) in value.enumerated() {
-            if character.isNumber {
-                filtered.append(character)
-            } else if character == "-" && index == 0 {
-                filtered.append(character)
-            }
-        }
-        return filtered
-    }
-
-    nonisolated private func appendToLog(_ message: String) {
-        let entry = message.hasSuffix("\n") ? message : message + "\n"
-        Task { @MainActor in
-            simulationState.appendLog(entry, maxCharacterCount: maxLogCharacterCount)
-            appendLogToFile(entry)
-        }
-    }
-
-    private func prepareOverlayASCII(for source: URL) -> URL? {
-        guard let projection = projectionInfo(for: source) else {
-            appendToLog("[Map] Unknown CRS for \(source.lastPathComponent); set a CRS override or include a .prj file before displaying the layer.")
-            return nil
-        }
-        if projection.isWGS84 { return source }
-
-        guard let gdalWarpPath = locateGDALWarp() else {
-            appendToLog("[Map] gdalwarp is required to display \(source.lastPathComponent). Install GDAL (e.g., `brew install gdal`) or set a CRS override if the data is already in WGS84.")
-            return nil
-        }
-
-        guard let targetDir = overlaysDirectory() else {
-            appendToLog("[Map] Unable to prepare overlay directory.")
-            return nil
-        }
-
-        let target = targetDir.appendingPathComponent("ros_overlay_wgs.asc")
-        try? FileManager.default.removeItem(at: target)
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: gdalWarpPath)
-        process.arguments = ["-of", "AAIGrid", "-s_srs", projection.srs, "-t_srs", "EPSG:4326", source.path, target.path]
-        let errorPipe = Pipe()
-        process.standardError = errorPipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-            if process.terminationStatus == 0 {
-                return target
-            } else {
-                let errorOutput = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                appendToLog("[Map] gdalwarp failed (\(process.terminationStatus)). \(errorOutput)")
-                return nil
-            }
-        } catch {
-            appendToLog("[Map] Failed to run gdalwarp: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    private func overlaysDirectory() -> URL? {
-        let fm = FileManager.default
-        guard let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("ClimateLiberator/Overlays", isDirectory: true)
-        do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-            return dir
-        } catch {
-            return nil
-        }
-    }
-
-    private func parseRateOfSpreadGrid(from asciiURL: URL) -> RateOfSpreadGrid? {
-        guard let data = try? String(contentsOf: asciiURL, encoding: .utf8) else { return nil }
-        let lines = data.split(whereSeparator: \.isNewline).map(String.init)
-        if lines.isEmpty { return nil }
-
-        var header: [String: Double] = [:]
-        var dataStartIndex = 0
-        let headerKeys: Set<String> = ["ncols", "nrows", "xllcorner", "yllcorner", "xllcenter", "yllcenter", "cellsize", "nodata_value"]
-
-        for (index, line) in lines.enumerated() {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-            let parts = trimmed.split(whereSeparator: { $0 == " " || $0 == "\t" })
-            guard parts.count >= 2 else {
-                dataStartIndex = index
-                break
-            }
-            let key = parts[0].lowercased()
-            if headerKeys.contains(key), let value = Double(parts[1]) {
-                header[key] = value
-                continue
-            } else {
-                dataStartIndex = index
-                break
-            }
-        }
-
-        guard let ncols = header["ncols"].flatMap(Int.init),
-              let nrows = header["nrows"].flatMap(Int.init),
-              let cellSize = header["cellsize"],
-              let xll = header["xllcorner"] ?? header["xllcenter"],
-              let yll = header["yllcorner"] ?? header["yllcenter"] else {
-            return nil
-        }
-        let nodataValue = header["nodata_value"]
-        let valuesCount = ncols * nrows
-        if valuesCount == 0 { return nil }
-
-        var values = [Double?](repeating: nil, count: valuesCount)
-        var minValue = Double.infinity
-        var maxValue = -Double.infinity
-        var hasRenderableSamples = false
-        var currentRow = 0
-
-        for line in lines[dataStartIndex...] {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-            let tokens = trimmed.split { $0 == " " || $0 == "\t" }
-            guard tokens.count == ncols else { continue }
-            if currentRow >= nrows { break }
-
-            for (col, token) in tokens.enumerated() {
-                let index = currentRow * ncols + col
-                if let value = Double(token) {
-                    if let nodata = nodataValue, value == nodata {
-                        values[index] = nil
-                    } else if abs(value) <= 1e-9 {
-                        // treat zeros (and tiny numerical noise) as transparent
-                        values[index] = nil
-                    } else {
-                        values[index] = value
-                        minValue = min(minValue, value)
-                        maxValue = max(maxValue, value)
-                        hasRenderableSamples = true
-                    }
-                }
-            }
-            currentRow += 1
-        }
-
-        guard hasRenderableSamples else {
-            return nil
-        }
-
-        if maxValue <= minValue {
-            maxValue = minValue + 1
-        }
-
-        let minLon = xll
-        let minLat = yll
-        let maxLon = xll + cellSize * Double(ncols)
-        let maxLat = yll + cellSize * Double(nrows)
-
-        return RateOfSpreadGrid(sourceURL: asciiURL,
-                                width: ncols,
-                                height: nrows,
-                                cellSize: cellSize,
-                                minValue: minValue,
-                                maxValue: maxValue,
-                                minLon: minLon,
-                                maxLon: maxLon,
-                                minLat: minLat,
-                                maxLat: maxLat,
-                                values: values)
-    }
-
-    private func makeOverlay(from grid: RateOfSpreadGrid,
-                             colorStops: [ROSColorStop],
-                             alphaScale: Double) -> RateOfSpreadOverlay? {
-        let width = grid.width
-        let height = grid.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let denominator = max(grid.maxValue - grid.minValue, 0.0001)
-
-        for row in 0..<height {
-            for col in 0..<width {
-                let sourceIndex = row * width + col
-                let pixelIndex = ((height - 1 - row) * width + col) * 4
-                guard let value = grid.values[sourceIndex] else {
-                    pixels[pixelIndex + 3] = 0
-                    continue
-                }
-                let normalized = (value - grid.minValue) / denominator
-                let color = heatColor(for: normalized, palette: colorStops, alphaScale: alphaScale)
-                pixels[pixelIndex] = color.r
-                pixels[pixelIndex + 1] = color.g
-                pixels[pixelIndex + 2] = color.b
-                pixels[pixelIndex + 3] = color.a
-            }
-        }
-
-        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
-              let image = CGImage(width: width,
-                                  height: height,
-                                  bitsPerComponent: 8,
-                                  bitsPerPixel: 32,
-                                  bytesPerRow: width * 4,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGBitmapInfo.byteOrder32Big.union(CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)),
-                                  provider: provider,
-                                  decode: nil,
-                                  shouldInterpolate: true,
-                                  intent: .defaultIntent) else {
-            return nil
-        }
-
-        let topLeft = MKMapPoint(CLLocationCoordinate2D(latitude: grid.maxLat, longitude: grid.minLon))
-        let bottomRight = MKMapPoint(CLLocationCoordinate2D(latitude: grid.minLat, longitude: grid.maxLon))
-        let rect = MKMapRect(x: min(topLeft.x, bottomRight.x),
-                             y: min(bottomRight.y, topLeft.y),
-                             width: abs(bottomRight.x - topLeft.x),
-                             height: abs(topLeft.y - bottomRight.y))
-        let center = CLLocationCoordinate2D(latitude: (grid.minLat + grid.maxLat) / 2,
-                                            longitude: (grid.minLon + grid.maxLon) / 2)
-        return RateOfSpreadOverlay(image: image,
-                                   boundingMapRect: rect,
-                                   coordinate: center,
-                                   values: grid.values,
-                                   width: width,
-                                   height: height,
-                                   minValue: grid.minValue,
-                                   maxValue: grid.maxValue,
-                                   minLon: grid.minLon,
-                                   maxLon: grid.maxLon,
-                                   minLat: grid.minLat,
-                                   maxLat: grid.maxLat,
-                                   cellSize: grid.cellSize)
-    }
-
-    private func heatColor(for normalized: Double,
-                           palette: [ROSColorStop],
-                           alphaScale: Double) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
-        let clamped = max(0, min(1, normalized))
-        let orderedStops = palette.count >= 2 ? palette.sorted { $0.location < $1.location } : RateOfSpreadPalette.terrain.colorStops
-        guard var lower = orderedStops.first, var upper = orderedStops.last else {
-            let fallback: UInt8 = 0
-            return (fallback, fallback, fallback, fallback)
-        }
-
-        for stop in orderedStops {
-            if stop.location <= clamped { lower = stop }
-            if stop.location >= clamped {
-                upper = stop
-                break
-            }
-        }
-
-        let denominator = max(upper.location - lower.location, 0.0001)
-        let t = (clamped - lower.location) / denominator
-        let r = lower.red + (upper.red - lower.red) * t
-        let g = lower.green + (upper.green - lower.green) * t
-        let b = lower.blue + (upper.blue - lower.blue) * t
-        let a = (lower.alpha + (upper.alpha - lower.alpha) * t) * max(0.05, min(1.0, alphaScale))
-
-        let red = UInt8(max(0, min(255, r * 255)))
-        let green = UInt8(max(0, min(255, g * 255)))
-        let blue = UInt8(max(0, min(255, b * 255)))
-        let alpha = UInt8(max(0, min(255, a * 255)))
-        return (red, green, blue, alpha)
-    }
-
-    private func prepareLogFile() -> URL? {
-        let fm = FileManager.default
-        guard let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-        let dir = base.appendingPathComponent("ClimateLiberator/Logs", isDirectory: true)
-        do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        } catch {
-            return nil
-        }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let filename = "simulation-log-\(formatter.string(from: Date())).txt"
-        let url = dir.appendingPathComponent(filename, isDirectory: false)
-        fm.createFile(atPath: url.path, contents: nil)
-        return url
-    }
-
-    private func resetLogFile(with text: String) {
-        guard let url = simulationState.logFileURL, let data = text.data(using: .utf8) else { return }
-        try? data.write(to: url, options: .atomic)
-    }
-
-    private func appendLogToFile(_ text: String) {
-        guard let url = simulationState.logFileURL, let data = text.data(using: .utf8) else { return }
-        do {
-            let handle = try FileHandle(forWritingTo: url)
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: data)
-        } catch {
-            // swallow silently to avoid recursive logging
-        }
-    }
-
-    private func simulatorLabel(for code: String) -> String {
-        simOptions.first(where: { $0.value == code })?.label ?? code
-    }
-
-    private func buildRunSummary(from output: String,
-                                 rosStats: (Double?, Double?),
-                                 timestamp: Date) -> RunSummary? {
-        let simulations = parseSimulationStats(from: output, rosStats: rosStats)
-        guard !simulations.isEmpty else { return nil }
-        return RunSummary(timestamp: timestamp, simulations: simulations)
-    }
-
-    private func parseSimulationStats(from output: String,
-                                      rosStats: (Double?, Double?)) -> [SimulationStats] {
-        var builders: [Int: SimulationStatsBuilder] = [:]
-        var currentIndex: Int?
-        var globalTotalCells: Int?
-
-        let lines = output.components(separatedBy: .newlines)
-        for rawLine in lines {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            if line.isEmpty { continue }
-
-            if line.hasPrefix("Number of cells") {
-                globalTotalCells = firstInteger(in: line)
-                continue
-            }
-
-            if line.hasPrefix("Simulation ") {
-                let tokens = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-                if tokens.count >= 2, let idx = Int(tokens[1]) {
-                    currentIndex = idx
-                    if builders[idx] == nil {
-                        builders[idx] = SimulationStatsBuilder(index: idx)
-                    }
-                }
-                continue
-            }
-
-            if line.lowercased().contains("ignition cell") {
-                guard let idx = currentIndex else { continue }
-                var builder = builders[idx] ?? SimulationStatsBuilder(index: idx)
-                builder.ignitionCell = firstInteger(in: line)
-                builders[idx] = builder
-                continue
-            }
-
-            if line.lowercased().contains("weather file") {
-                guard let idx = currentIndex else { continue }
-                var builder = builders[idx] ?? SimulationStatsBuilder(index: idx)
-                if let range = line.range(of: ":", options: .backwards) {
-                    builder.weatherFile = String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces)
-                } else {
-                    builder.weatherFile = line
-                }
-                builders[idx] = builder
-                continue
-            }
-
-            for label in ["Available", "Burnt", "Non-Burnable", "Firebreak", "Total"] {
-                if line.hasPrefix(label) {
-                    guard let idx = currentIndex else { continue }
-                    var builder = builders[idx] ?? SimulationStatsBuilder(index: idx)
-                    if let value = parseCountValue(from: line, label: label) {
-                        switch label {
-                        case "Available": builder.available = value
-                        case "Burnt": builder.burnt = value
-                        case "Non-Burnable": builder.nonBurnable = value
-                        case "Firebreak": builder.firebreak = value
-                        case "Total": builder.totalCells = value
-                        default: break
-                        }
-                        builders[idx] = builder
-                    }
-                }
-            }
-        }
-
-        let highest = rosStats.0
-        let lowest = rosStats.1
-        let sortedBuilders = builders.values.sorted { $0.index < $1.index }
-        return sortedBuilders.map { builder in
-            SimulationStats(simulationIndex: builder.index,
-                            weatherFile: builder.weatherFile,
-                            ignitionCell: builder.ignitionCell,
-                            totalCells: builder.totalCells ?? globalTotalCells,
-                            available: builder.available,
-                            burnt: builder.burnt,
-                            nonBurnable: builder.nonBurnable,
-                            firebreak: builder.firebreak,
-                            highestROS: highest,
-                            lowestROS: lowest)
-        }
-    }
-
-    private func analyzeRateOfSpread(at outputDirectory: String) -> (Double?, Double?) {
-        let rosDir = rateOfSpreadDirectory(basePath: outputDirectory)
-        let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(at: rosDir,
-                                                         includingPropertiesForKeys: [.contentModificationDateKey],
-                                                         options: .skipsHiddenFiles) else {
-            return (nil, nil)
-        }
-        let ascFiles = contents.filter { $0.pathExtension.lowercased() == "asc" }
-        guard !ascFiles.isEmpty else { return (nil, nil) }
-
-        var minValue: Double?
-        var maxValue: Double?
-
-        for file in ascFiles {
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            var nodataValue: Double?
-            for rawLine in text.split(whereSeparator: \.isNewline) {
-                let line = rawLine.trimmingCharacters(in: .whitespaces)
-                if line.isEmpty { continue }
-                let lower = line.lowercased()
-                if lower.hasPrefix("nodata_value") {
-                    nodataValue = firstDouble(in: String(line))
-                    continue
-                }
-                if lower.hasPrefix("ncols") || lower.hasPrefix("nrows") ||
-                    lower.hasPrefix("xllcorner") || lower.hasPrefix("yllcorner") ||
-                    lower.hasPrefix("cellsize") {
-                    continue
-                }
-
-                let numbers = line.split { $0 == " " || $0 == "\t" }
-                for token in numbers {
-                    if let value = Double(token),
-                       nodataValue == nil || value != nodataValue {
-                        minValue = min(value, minValue ?? value)
-                        maxValue = max(value, maxValue ?? value)
-                    }
-                }
-            }
-        }
-
-        return (maxValue, minValue)
-    }
-
-    private func parseCountValue(from line: String, label: String) -> Int? {
-        let remainder = line.replacingOccurrences(of: label, with: "")
-        return firstInteger(in: remainder)
-    }
-
-    private func firstInteger(in text: String) -> Int? {
-        if let range = text.range(of: "[0-9]+", options: .regularExpression) {
-            return Int(text[range])
-        }
-        return nil
-    }
-
-    private func firstDouble(in text: String) -> Double? {
-        if let range = text.range(of: "-?[0-9]+(\\.[0-9]+)?", options: .regularExpression) {
-            return Double(text[range])
-        }
-        return nil
-    }
 
 }
