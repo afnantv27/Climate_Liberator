@@ -8,14 +8,26 @@ doxygen Doxyfile
 
 The generated files will be saved to the docs directory.
 
-## Enterprise docs
+## Product direction
 
-The main enterprise-readiness references now live alongside the engineering docs:
+The canonical source of truth for what Climate Liberator is and what gets built
+next:
 
-- `enterprise-readiness-plan.md`
-- `sli-slo-catalog.md`
-- `production-optimization-roadmap.md`
+- `product-architecture.md` — the five-stage peril-agnostic core, the anti-drift
+  rule, the keep/park/build map, and the sequenced next steps. **Read this first.**
+
+## Engineering docs
+
 - `qa-benchmark-report.md`
+
+## Parked (post-validation) docs
+
+Enterprise-scale plans that are valid *later* but premature for a pre-user
+product. See `product-architecture.md` §6 for why they are parked.
+
+- `future/enterprise-readiness-plan.md`
+- `future/sli-slo-catalog.md`
+- `future/production-optimization-roadmap.md`
 
 ## Prerequisites
 
