@@ -15,7 +15,7 @@ struct ContentView: View {
     @AppStorage("climateliberator.inputFolder") private var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
     @AppStorage("climateliberator.outputFolder") private var outputFolder = ""
     @AppStorage("climateliberator.theme") private var theme: ThemeStyle = .night
-    @AppStorage("climateliberator.engineMode") private var engineModeRaw = SimulationEngineMode.legacyCell2Fire.rawValue
+    @AppStorage("climateliberator.engineMode") private var engineModeRaw = SimulationEngineMode.embeddedCell2Fire.rawValue
 
     @State private var showingFolderPicker = false
     @State private var showingOutputPicker = false

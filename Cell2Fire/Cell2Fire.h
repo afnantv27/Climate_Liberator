@@ -31,8 +31,12 @@
 #include <vector>
 
 using namespace std;
-string C2FW_VERSION = "v0.0.0";
-string sim_log_filename = "ignition_and_weather_log.csv";
+// Declared here, defined once in Cell2Fire.cpp. Defining them in the header
+// caused duplicate-symbol link errors when more than one translation unit
+// (Cell2Fire.cpp and cell2fire_api.cpp) includes this header — which happens
+// in the embedded-library build.
+extern string C2FW_VERSION;
+extern string sim_log_filename;
 
 class Cell2Fire
 {
