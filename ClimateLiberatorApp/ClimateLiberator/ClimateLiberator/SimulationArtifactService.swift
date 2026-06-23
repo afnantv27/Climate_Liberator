@@ -543,11 +543,5 @@ final class SimulationArtifactService: SimulationArtifactServicing {
     }
 }
 
-private extension SimulationStats {
-    var resolvedTotal: Int? {
-        if let totalCells { return totalCells }
-        let components = [available, burnt, nonBurnable, firebreak]
-        if components.contains(where: { $0 == nil }) { return nil }
-        return components.compactMap { $0 }.reduce(0, +)
-    }
-}
+// `resolvedTotal` is defined once (internal) on SimulationStats in MapOverlays.swift
+// and shared across the module.
