@@ -25,14 +25,18 @@ extension IndiaWildfireRiskGrid: HazardSurface {
 /// the peril-agnostic core can treat Cell2Fire as a swappable hazard source.
 struct WildfireHazardModel: HazardModel {
     let peril: Peril = .wildfire
-    private let produceSurface: (HazardRequest) async throws -> HazardSurface
+    // A synchronous, Sendable provider. The producing work (engine output parse)
+    // is file I/O, so it is sync; the protocol method stays async for engines that
+    // need it. Storing an async closure here crashes under MainActor-default
+    // isolation (Builtin.ImplicitActor retain on a bad address), so we keep it sync.
+    private let produceSurface: @Sendable (HazardRequest) throws -> HazardSurface
 
-    init(produceSurface: @escaping (HazardRequest) async throws -> HazardSurface) {
+    init(produceSurface: @escaping @Sendable (HazardRequest) throws -> HazardSurface) {
         self.produceSurface = produceSurface
     }
 
     func makeHazardSurface(_ request: HazardRequest) async throws -> HazardSurface {
-        try await produceSurface(request)
+        try produceSurface(request)
     }
 }
 
@@ -47,23 +51,7 @@ extension IndiaNearbyBuilding: ExposureAsset {
     var assetType: String { landuse ?? "unknown" }
 }
 
-// MARK: Stage 3 — a first, deliberately-crude wildfire vulnerability curve
-
-/// Maps fire rate-of-spread (intensity) to a damage ratio. This is a placeholder
-/// for the real vulnerability layer (docs/product-architecture.md stage 3):
-/// any cell with positive fire activity is treated as a total loss for now.
-struct WildfireVulnerabilityCurve: VulnerabilityCurve {
-    let peril: Peril = .wildfire
-    let ignitionThreshold: Double
-
-    init(ignitionThreshold: Double = 0) {
-        self.ignitionThreshold = ignitionThreshold
-    }
-
-    func damageRatio(intensity: Double, assetType: String) -> Double {
-        intensity > ignitionThreshold ? 1.0 : 0.0
-    }
-}
+// MARK: Stage 3 — wildfire vulnerability lives in WildfireVulnerability.swift
 
 // MARK: Stage 4 — the existing loss engine, behind the protocol
 

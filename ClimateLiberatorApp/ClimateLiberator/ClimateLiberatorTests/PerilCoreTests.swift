@@ -22,6 +22,13 @@ final class PerilCoreTests: XCTestCase {
         let assetType: String
     }
 
+    /// Deterministic vulnerability so pipeline tests verify composition, not curve params.
+    private struct StubVulnerability: VulnerabilityCurve {
+        let peril: Peril = .wildfire
+        let ratio: Double
+        func damageRatio(intensity: Double, assetType: String) -> Double { ratio }
+    }
+
     private func makeAssets() -> [any ExposureAsset] {
         [
             StubAsset(assetID: "a", latitude: 0, longitude: 0, totalInsuredValue: 1_000_000, assetType: "residential"),
@@ -34,7 +41,7 @@ final class PerilCoreTests: XCTestCase {
             peril: .wildfire,
             hazard: ConstantHazard(value: 5.0),          // positive fire activity everywhere
             exposure: makeAssets(),
-            vulnerability: WildfireVulnerabilityCurve(),  // intensity > 0 → total loss
+            vulnerability: StubVulnerability(ratio: 1.0),  // intensity > 0 → total loss
             financial: LayeredFinancialModel()
         )
         XCTAssertEqual(result.assetCount, 2)
@@ -49,7 +56,7 @@ final class PerilCoreTests: XCTestCase {
             peril: .wildfire,
             hazard: ConstantHazard(value: nil),           // outside footprint everywhere
             exposure: makeAssets(),
-            vulnerability: WildfireVulnerabilityCurve(),
+            vulnerability: StubVulnerability(ratio: 1.0),
             financial: LayeredFinancialModel()
         )
         XCTAssertEqual(result.totalInsuredValue, 1_500_000, accuracy: 0.001)
@@ -62,7 +69,7 @@ final class PerilCoreTests: XCTestCase {
             peril: .wildfire,
             hazard: ConstantHazard(value: 5.0),
             exposure: [makeAssets()[0]],                  // single 1,000,000 asset
-            vulnerability: WildfireVulnerabilityCurve(),
+            vulnerability: StubVulnerability(ratio: 1.0),
             financial: LayeredFinancialModel(),
             deductibleFraction: 0.1,
             limitFraction: 1
