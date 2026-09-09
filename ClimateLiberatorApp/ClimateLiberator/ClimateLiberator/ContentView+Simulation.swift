@@ -11,10 +11,18 @@ extension ContentView {
         normalizeWeatherInterval()
         normalizeSimulationParameters()
 
-        let binaryResolution = resolveBinaryPath(allowAutofix: true)
-        guard case let .resolved(normalizedBinary) = binaryResolution else {
-            appendToLog("Cannot run: \(binaryResolution.failureMessage)")
+        guard simulationState.selectedSim == "S" else {
+            appendToLog("This build supports Scott & Burgan (S). Select it before running this configuration.")
             return
+        }
+        var normalizedBinary = ""
+        if simulationEngineMode == .legacyCell2Fire {
+            let binaryResolution = resolveBinaryPath(allowAutofix: true)
+            guard case let .resolved(path) = binaryResolution else {
+                appendToLog("Cannot run: \(binaryResolution.failureMessage)")
+                return
+            }
+            normalizedBinary = path
         }
 
         if let error = validateEnvironment(skipBinaryCheck: true) {
@@ -353,15 +361,8 @@ extension ContentView {
         var seen = Set<String>()
         var candidates: [String] = []
 
-        if trimmed.isEmpty {
-            candidates.append(preferredBinaryPath)
-            candidates.append(contentsOf: legacyBinaryPaths)
-        } else {
-            if legacyBinaryPaths.contains(trimmed) {
-                candidates.append(preferredBinaryPath)
-            }
-            candidates.append(trimmed)
-        }
+        // Empty selection follows the app bundle after relocation; explicit overrides are respected.
+        candidates.append(trimmed.isEmpty ? preferredBinaryPath : trimmed)
 
         for candidate in candidates where !candidate.isEmpty && !seen.contains(candidate) {
             seen.insert(candidate)
@@ -370,9 +371,6 @@ extension ContentView {
             if fm.fileExists(atPath: expanded, isDirectory: &isDir),
                !isDir.boolValue,
                fm.isExecutableFile(atPath: expanded) {
-                if allowAutofix, candidate != binaryPath {
-                    binaryPath = candidate
-                }
                 return .resolved(expanded)
             }
         }
@@ -529,7 +527,8 @@ extension ContentView {
            let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
            !text.isEmpty {
             let upper = text.uppercased()
-            let isWGS = upper.contains("WGS_1984") || upper.contains("WGS84") || upper.contains("4326")
+            let isProjected = upper.contains("PROJCS") || upper.contains("PROJCRS") || upper.contains("UTM")
+            let isWGS = !isProjected && (upper == "EPSG:4326" || upper.contains("GEOGCS[\"WGS 84\"") || upper.contains("GEOGCS[\"GCS_WGS_1984\""))
             return ProjectionInfo(srs: text, isWGS84: isWGS)
         }
         if useOverrideCRS {
@@ -552,13 +551,6 @@ extension ContentView {
 
         if (-180.0...180.0).contains(xOrigin) && (-90.0...90.0).contains(yOrigin) {
             return ProjectionInfo(srs: "EPSG:4326", isWGS84: true)
-        }
-
-        if isLikelyDutchRD(easting: xOrigin, northing: yOrigin) {
-            if logFailures {
-            appendToLog("[CRS] No PRJ for \(ascURL.lastPathComponent); assuming Dutch RD New (EPSG:28992). Use the CRS override if this assumption is incorrect.")
-            }
-            return ProjectionInfo(srs: "EPSG:28992", isWGS84: false)
         }
 
         return nil
@@ -595,12 +587,6 @@ extension ContentView {
             return nil
         }
         return ASCIIHeaderMetadata(xOrigin: xOrigin, yOrigin: yOrigin, cellSize: cellSize)
-    }
-
-    func isLikelyDutchRD(easting: Double, northing: Double) -> Bool {
-        let eastingRange = 0.0...300_000.0
-        let northingRange = 250_000.0...630_000.0
-        return eastingRange.contains(easting) && northingRange.contains(northing)
     }
 
     func normalizeCRSCode(_ value: String) -> String {

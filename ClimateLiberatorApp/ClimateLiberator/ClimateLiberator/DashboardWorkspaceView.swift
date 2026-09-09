@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct DashboardWorkspaceView: View {
-    let enterpriseReadiness: EnterpriseReadinessSummary
     let openClimateSimulation: () -> Void
     let openForecastIntelligence: () -> Void
     let openTCFDDashboard: () -> Void
@@ -60,7 +59,7 @@ struct DashboardWorkspaceView: View {
                     HStack(alignment: .top, spacing: 20) {
                         dashboardToolCard(
                             title: "Climate Simulation",
-                            subtitle: "Run hazard scenarios and generate evidence packages from the operations workspace.",
+                            subtitle: "Run the current wildfire harness and generate evidence for climate-risk review.",
                             icon: "flame.fill",
                             accent: Color.orange,
                             actionTitle: "Open Climate Simulation",
@@ -80,11 +79,11 @@ struct DashboardWorkspaceView: View {
                             )
 
                             dashboardToolCard(
-                                title: "TCFD Dashboard",
-                                subtitle: "Review disclosure packages and prepare board-ready outputs.",
+                                title: "Disclosure Review",
+                                subtitle: "Review scenario evidence and disclosure drafts for IFRS S2 / BRSR.",
                                 icon: "doc.text.magnifyingglass",
                                 accent: Color.teal,
-                                actionTitle: "Open TCFD Dashboard",
+                                actionTitle: "Open Disclosure Review",
                                 action: openTCFDDashboard,
                                 prominence: .secondary
                             )
@@ -92,14 +91,13 @@ struct DashboardWorkspaceView: View {
                         .frame(maxWidth: .infinity)
                     }
 
-                    enterpriseReadinessSection
-
                     secondarySection
                 }
-                .padding(.top, 112)
+                .padding(.top, 88)
                 .padding(.horizontal, 28)
                 .padding(.bottom, 36)
             }
+            .accessibilityIdentifier("dashboard.scroll")
         }
     }
 
@@ -108,21 +106,23 @@ struct DashboardWorkspaceView: View {
             Text("Dashboard")
                 .font(.system(size: 42, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("dashboard.heading")
 
-            Text("Climate Risk Workflows")
+            Text("India-First Climate Risk")
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
                 .foregroundColor(Color.white.opacity(0.92))
 
-            Text("Launch simulation, forecast intelligence, and disclosure review from one control point. The detailed management status view now lives separately so this screen stays clean and easy to navigate.")
+            Text("Screen exposure, explore hazard scenarios, and review financial impacts and disclosure evidence. A shared climate-risk core for insurers and sustainability teams, with wildfire as the first hazard harness.")
                 .font(.title3)
                 .foregroundColor(Color.white.opacity(0.72))
                 .frame(maxWidth: 920, alignment: .leading)
 
             HStack(spacing: 12) {
-                dashboardTag("Wildfire live")
-                dashboardTag("India-first depth")
-                dashboardTag("Forecast + AQ")
-                dashboardTag("Board-pack workflow")
+                dashboardTag("India exposure")
+                dashboardTag("Wildfire harness")
+                dashboardTag("Forecast evidence")
+                dashboardTag("IFRS S2 / BRSR drafts")
             }
         }
         .padding(30)
@@ -147,7 +147,7 @@ struct DashboardWorkspaceView: View {
         HStack(alignment: .top, spacing: 20) {
             secondaryCard(
                 title: "Executive Overview",
-                subtitle: "Management status, disclosure readiness, finance backlog, and latest package signals.",
+                subtitle: "Review status, finance follow-ups, and the latest disclosure evidence.",
                 buttonTitle: "Open Executive Overview",
                 icon: "gauge.with.dots.needle.67percent",
                 accent: Color.indigo,
@@ -156,7 +156,7 @@ struct DashboardWorkspaceView: View {
 
             secondaryCard(
                 title: "Portfolio Intelligence",
-                subtitle: "Inspect site exposure, concentration hotspots, utility demo workflow, and India screening.",
+                subtitle: "Screen India sites and portfolios, inspect exposure, and identify concentration hotspots.",
                 buttonTitle: "Open Portfolio Intelligence",
                 icon: "building.2.crop.circle",
                 accent: Color.green,
@@ -165,88 +165,9 @@ struct DashboardWorkspaceView: View {
         }
     }
 
-    private var enterpriseReadinessSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Enterprise Readiness")
-                    .font(.title3.bold())
-                    .foregroundColor(.white)
-                Spacer()
-                Text(enterpriseReadiness.coverageLabel)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(Color.white.opacity(0.68))
-            }
-
-            HStack(alignment: .top, spacing: 16) {
-                enterpriseMiniMetric(title: "SLO catalog", value: "\(enterpriseReadiness.serviceLevelObjectiveCount)", detail: "\(enterpriseReadiness.availabilityObjectiveCount) availability objectives")
-                enterpriseMiniMetric(title: "Artifacts indexed", value: "\(enterpriseReadiness.activeArtifactCount)", detail: "\(enterpriseReadiness.disclosureManifestCount) disclosure manifests discovered")
-                enterpriseMiniMetric(title: "Simulation backend", value: enterpriseReadiness.latestSimulationEngineLabel ?? "None", detail: "Latest registered simulation engine")
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(enterpriseReadiness.surfaceReadiness) { readiness in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(readiness.surface.displayLabel)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(.white)
-                        Text(readiness.healthLabel)
-                            .font(.headline.weight(.bold))
-                            .foregroundColor(readiness.healthColor)
-                        Text(readiness.detailLabel)
-                            .font(.caption)
-                            .foregroundColor(Color.white.opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.055))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                            )
-                    )
-                }
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
-        )
-    }
-
     private enum CardProminence {
         case primary
         case secondary
-    }
-
-    private func enterpriseMiniMetric(title: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(Color.white.opacity(0.72))
-            Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            Text(detail)
-                .font(.caption)
-                .foregroundColor(Color.white.opacity(0.66))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-        )
     }
 
     private func dashboardToolCard(title: String,
@@ -277,8 +198,6 @@ struct DashboardWorkspaceView: View {
                     .foregroundColor(Color.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 0)
 
             Button(actionTitle, action: action)
                 .buttonStyle(.borderedProminent)

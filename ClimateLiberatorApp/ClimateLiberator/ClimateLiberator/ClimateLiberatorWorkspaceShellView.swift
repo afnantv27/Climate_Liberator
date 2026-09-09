@@ -43,18 +43,18 @@ struct ClimateLiberatorWorkspaceShellView: View {
 
     private var globalToolbar: some View {
         ViewThatFits(in: .horizontal) {
-            toolbarContent(showEnterpriseLabel: true)
-            toolbarContent(showEnterpriseLabel: false)
+            toolbarContent(showFocusLabel: true)
+            toolbarContent(showFocusLabel: false)
         }
     }
 
-    private func toolbarContent(showEnterpriseLabel: Bool) -> some View {
+    private func toolbarContent(showFocusLabel: Bool) -> some View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Text("Climate Liberator")
                     .font(.headline.weight(.semibold))
-                if showEnterpriseLabel {
-                    Text("Enterprise")
+                if showFocusLabel {
+                    Text("India-first")
                         .font(.subheadline)
                         .foregroundColor(theme.subtleTextColor)
                 }
@@ -77,7 +77,7 @@ struct ClimateLiberatorWorkspaceShellView: View {
 
             Spacer(minLength: 0)
 
-            Button("Open TCFD Dashboard") {
+            Button("Open Disclosure Review") {
                 openTCFDDashboard()
             }
             .buttonStyle(.bordered)

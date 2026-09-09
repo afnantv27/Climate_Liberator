@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "country": "IN",
+  "currency": "INR",
+  "files_sha256": {
+    "India/OED/location.csv": "df34aca4241d9f7d39f3e54f33d224d38430a899466b30324a228b636275cdd9",
+    "India/india_demo.db": "76534efe91a5779a5105e48d60eb55323bbfd041295a5c35a61fa0adc69b99de",
+    "Info.plist": "0e4f973bc1988669c52322bcff93cd65217a35438f515c86e62910caa0301bb3",
+    "README.md": "28aac888f16b278de7c14ee9a3c0d282c56ab6079e4bd5cce9bc2893bb9815ec",
+    "Studies/India-Demo-S/Ignitions.csv": "b9b3c87dd8adb06757310de64137918b2ec09f6ea43c402cc1f39f45a4c815d2",
+    "Studies/India-Demo-S/Weather.csv": "122ad5904841bac596f54e8b691a39bd3342b1bc4f6ca749a79c8ad03786ebde",
+    "Studies/India-Demo-S/elevation.asc": "c80bd920e52e02884bc0a46618a430ae99864f4e65ebd5fe4d71fed1d3416d4c",
+    "Studies/India-Demo-S/elevation.prj": "926fe2946a4059120ba0c90ad3d917b64b33d66ea387a13bae90354034883156",
+    "Studies/India-Demo-S/fuels.asc": "4dc5b2e61df45847c3a89ed0d84459eafede5506a7ed38fa295b67b6f68309ff",
+    "Studies/India-Demo-S/fuels.prj": "926fe2946a4059120ba0c90ad3d917b64b33d66ea387a13bae90354034883156",
+    "Studies/India-Demo-S/probabilityMap.asc": "96ab665656e26e871dd56762ad77bfd20f4143c63c6516accf5ad8b12da3b734",
+    "Studies/India-Demo-S/probabilityMap.prj": "926fe2946a4059120ba0c90ad3d917b64b33d66ea387a13bae90354034883156",
+    "Studies/India-Demo-S/scott_burgan_table7.csv": "68884e33cddf213043461a66e7c74f13366cd03c0ac5f12113362cd6ab9fd091",
+    "Studies/India-Demo-S/spain_lookup_table.csv": "3824d90a21d6869dea4cfe9d173fe82be04bf64cf41c7ef51dcd6e3a110892f9"
+  }
+}

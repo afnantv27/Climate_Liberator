@@ -165,13 +165,13 @@ struct ForecastLocationPin: Identifiable {
     let tint: Color
 }
 
-enum ForecastSourceMode: String, Codable, Hashable {
+nonisolated enum ForecastSourceMode: String, Codable, Hashable, Sendable {
     case liveFallback
     case processedFeed
     case curatedScenarioInput
 }
 
-enum ForecastConfidence: String, Codable, Hashable {
+nonisolated enum ForecastConfidence: String, Codable, Hashable, Sendable {
     case low
     case medium
     case high
@@ -179,20 +179,20 @@ enum ForecastConfidence: String, Codable, Hashable {
     case unknown
 }
 
-enum ForecastPromotionLevel: String, Codable, Hashable {
+nonisolated enum ForecastPromotionLevel: String, Codable, Hashable, Sendable {
     case operationsOnly
     case executiveEligible
     case disclosureEligible
 }
 
-struct ForecastObservedMetric: Identifiable, Codable, Hashable {
+nonisolated struct ForecastObservedMetric: Identifiable, Codable, Hashable, Sendable {
     var id: String
     var title: String
     var value: String
     var detail: String
 }
 
-struct ForecastEvidenceSnapshot: Identifiable, Codable, Hashable {
+nonisolated struct ForecastEvidenceSnapshot: Identifiable, Codable, Hashable, Sendable {
     var id: String
     var capturedAt: Date
     var providerID: String
@@ -339,10 +339,15 @@ final class ForecastIntelligenceStore: ObservableObject {
     private let liveDataClient: ForecastLiveDataClient
     private let metricBuilder: ForecastMetricCardBuilding
     private let evidenceManager: ForecastEvidencePromotionManaging
+    private let evidenceQueue = DispatchQueue(label: "com.climateliberator.forecast-evidence", qos: .utility)
     private var resolvedCoordinate = CLLocationCoordinate2D(latitude: 12.9716, longitude: 77.5946)
     private var currentGeneratedAt: Date?
     private var currentValidFrom: Date?
     private var currentValidTo: Date?
+    private var activeProviderID = ""
+    private var activeSourceMode: ForecastSourceMode = .processedFeed
+    private var evidenceLocation: ForecastResolvedLocation?
+    private var requestGeneration = 0
 
     convenience init() {
         let snapshotStore = FileSystemForecastEvidenceSnapshotStore()
@@ -373,19 +378,18 @@ final class ForecastIntelligenceStore: ObservableObject {
     }
 
     var providerNote: String {
-        "Forecast Intelligence now prefers processed feeds from the Build environment workspace, then falls back to live provider calls. That keeps the app aligned with a production data-product model instead of direct point integrations."
+        "Imported processed feeds in this user's Application Support folder work offline for nearby locations. Location search and live Open-Meteo fallback require a network connection. No national forecast is generated from missing local data."
     }
 
     var sourceState: ForecastSourceState {
-        let mode = trustSummary.sourceMode.lowercased()
         let freshness = trustSummary.freshnessLabel.lowercased()
-        if weatherCards.isEmpty {
+        if weatherCards.isEmpty && airQualityCards.isEmpty {
             return .forecastUnavailable
         }
         if freshness.contains("stale") {
             return .staleData
         }
-        if mode.contains("fallback") {
+        if activeSourceMode == .liveFallback {
             return .liveProviderFallback
         }
         return .processedFeedActive
@@ -441,82 +445,104 @@ final class ForecastIntelligenceStore: ObservableObject {
         }
 
         isLoading = true
-        defer { isLoading = false }
+        requestGeneration += 1
+        let generation = requestGeneration
+        defer { if generation == requestGeneration { isLoading = false } }
 
         do {
             let match = try await liveDataClient.resolveLocation(query: query)
+            guard generation == requestGeneration, !Task.isCancelled else { return }
+            guard CLLocationCoordinate2DIsValid(match.coordinate) else { throw URLError(.badServerResponse) }
             selectedLocationName = match.name
             resolvedCoordinate = match.coordinate
             mapRegion = MKCoordinateRegion(
                 center: match.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)
             )
+        } catch {
+            guard generation == requestGeneration else { return }
+            statusMessage = "Could not resolve the searched location. Location search requires a network connection; the selected location has not changed."
+            return
+        }
+        do {
             try await refreshForecast()
         } catch {
-            statusMessage = "Could not resolve the searched location. Try a city, district, or facility name."
+            // refreshForecast already distinguishes a data failure from a location-search failure.
         }
     }
 
     func refreshForecast() async throws {
         isLoading = true
-        defer { isLoading = false }
+        requestGeneration += 1
+        let generation = requestGeneration
+        let horizon = selectedHorizon
+        let coordinate = resolvedCoordinate
+        defer { if generation == requestGeneration { isLoading = false } }
+        clearCurrentForecast()
         loadBuildSupportFeeds()
 
-        if let processedFeed = feedRepository.loadProcessedFeed(near: resolvedCoordinate, horizon: selectedHorizon) {
+        if let processedFeed = feedRepository.loadProcessedFeed(near: coordinate, horizon: horizon),
+           !processedFeed.isSynthetic {
             applyProcessedFeed(processedFeed)
             persistCurrentSnapshot()
             return
         }
 
-        if selectedHorizon == .shortTerm {
-            async let weatherResponse = liveDataClient.fetchWeatherForecast(for: resolvedCoordinate, horizon: selectedHorizon)
-            async let airQualityResponse = liveDataClient.fetchAirQualityForecast(for: resolvedCoordinate)
+        do {
+        if horizon == .shortTerm {
+            async let weatherResponse = liveDataClient.fetchWeatherForecast(for: coordinate, horizon: horizon)
+            async let airQualityResponse = try? liveDataClient.fetchAirQualityForecast(for: coordinate)
 
             let weather = try await weatherResponse
-            let airQuality = try await airQualityResponse
+            let airQuality = await airQualityResponse
+            guard generation == requestGeneration, horizon == selectedHorizon, !Task.isCancelled else { return }
 
             weatherCards = metricBuilder.buildWeatherCards(from: weather)
-            airQualityCards = metricBuilder.buildAirQualityCards(from: airQuality)
-            currentGeneratedAt = Date()
-            currentValidFrom = Date()
-            currentValidTo = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+            guard !weatherCards.isEmpty else { throw URLError(.cannotParseResponse) }
+            airQualityCards = airQuality.map { metricBuilder.buildAirQualityCards(from: $0) } ?? []
+            activeProviderID = "open_meteo"
+            activeSourceMode = .liveFallback
             providerLabel = "Open-Meteo"
             trustSummary = ForecastTrustSummary(
                 sourceLabel: "Open-Meteo",
                 sourceMode: "Live provider fallback",
                 officialStatus: "Derived provider data",
                 confidenceLabel: "Medium",
-                freshnessLabel: "Live refresh",
-                updatedLabel: "Updated just now",
-                validWindowLabel: "Valid for the next 7 day window",
-                note: "This view is using live short-term fallback because no processed Build feed was available for the selected location."
+                freshnessLabel: "Retrieved just now; model freshness unknown",
+                updatedLabel: "Provider issue time unavailable",
+                validWindowLabel: "Requested 7 days; validity not verified",
+                note: "Network fallback, not an observed risk measurement. Retrieval time is not the model issue time. No eligible nearby processed feed was available."
             )
-            statusMessage = "\(selectedHorizon.title) outlook refreshed for \(selectedLocationName). \(selectedHorizon.providerStatus)"
+            statusMessage = "\(horizon.title) outlook retrieved for \(selectedLocationName)." + (airQualityCards.isEmpty ? " Air quality is unavailable." : "")
             persistCurrentSnapshot()
             return
         }
 
-        let seasonalForecast = try await liveDataClient.fetchSeasonalForecast(for: resolvedCoordinate, horizon: selectedHorizon)
+        let seasonalForecast = try await liveDataClient.fetchSeasonalForecast(for: coordinate, horizon: horizon)
+        guard generation == requestGeneration, horizon == selectedHorizon, !Task.isCancelled else { return }
         weatherCards = metricBuilder.buildWeatherCards(from: seasonalForecast)
+        guard !weatherCards.isEmpty else { throw URLError(.cannotParseResponse) }
         airQualityCards = []
-        currentGeneratedAt = Date()
-        currentValidFrom = Date()
-        currentValidTo = Calendar.current.date(byAdding: .day, value: selectedHorizon == .subseasonal ? 46 : 183, to: Date())
+        activeProviderID = "open_meteo_seasonal"
+        activeSourceMode = .liveFallback
         providerLabel = "Open-Meteo Seasonal"
         trustSummary = ForecastTrustSummary(
             sourceLabel: "Open-Meteo Seasonal",
             sourceMode: "Live provider fallback",
             officialStatus: "Derived provider data",
             confidenceLabel: selectedHorizon == .subseasonal ? "Medium" : "Watch",
-            freshnessLabel: "Live refresh",
-            updatedLabel: "Updated just now",
-            validWindowLabel: selectedHorizon == .subseasonal
-                ? "Valid for the current subseasonal guidance window"
-                : "Valid for the current seasonal guidance window",
-            note: "This view is using live seasonal-weather fallback because no processed Build feed was available for the selected location. Air quality remains available only for short-term or managed processed feeds."
+            freshnessLabel: "Retrieved just now; model freshness unknown",
+            updatedLabel: "Provider issue time unavailable",
+            validWindowLabel: horizon == .subseasonal ? "Requested 46 days; validity not verified" : "Requested 183 days; validity not verified",
+            note: "Network seasonal guidance, not an observed risk measurement. Provider issue time and validity are not verified. Air quality requires a managed feed on this horizon."
         )
         statusMessage = "\(selectedHorizon.title) weather outlook refreshed for \(selectedLocationName). Air-quality guidance requires a processed feed on this horizon."
         persistCurrentSnapshot()
+        } catch {
+            guard generation == requestGeneration, horizon == selectedHorizon else { return }
+            setRefreshFailureMessage()
+            throw error
+        }
     }
 
     func updateHorizon(_ horizon: ForecastHorizon) async {
@@ -524,20 +550,21 @@ final class ForecastIntelligenceStore: ObservableObject {
         do {
             try await refreshForecast()
         } catch {
-            setRefreshFailureMessage()
+            // The active refresh owns its failure state; an older request must not overwrite it.
         }
     }
 
     func setRefreshFailureMessage() {
+        clearCurrentForecast()
         trustSummary = ForecastTrustSummary(
-            sourceLabel: providerLabel,
+            sourceLabel: "Forecast unavailable",
             sourceMode: "Refresh failed",
-            officialStatus: "Last source retained",
-            confidenceLabel: "Watch",
-            freshnessLabel: "Refresh failed",
-            updatedLabel: trustSummary.updatedLabel,
-            validWindowLabel: trustSummary.validWindowLabel,
-            note: "The last known source is still shown, but the most recent refresh attempt failed."
+            officialStatus: "No current source",
+            confidenceLabel: "Unknown",
+            freshnessLabel: "Unknown",
+            updatedLabel: "No forecast loaded",
+            validWindowLabel: "No valid window",
+            note: "No eligible nearby imported feed was available and the network refresh failed. Previous selection data is not used as a substitute."
         )
         statusMessage = "Forecast refresh failed for \(selectedLocationName)."
     }
@@ -555,12 +582,9 @@ final class ForecastIntelligenceStore: ObservableObject {
     }
 
     private func applyProcessedFeed(_ feed: ProcessedForecastFeed) {
-        selectedLocationName = feed.locationLabel
-        resolvedCoordinate = feed.coordinate
-        mapRegion = MKCoordinateRegion(
-            center: feed.coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)
-        )
+        evidenceLocation = ForecastResolvedLocation(name: feed.locationLabel, coordinate: feed.coordinate)
+        activeProviderID = feed.providerID
+        activeSourceMode = feed.sourceMode
         providerLabel = feed.providerLabel
         weatherCards = feed.weatherMetrics.map(\.card)
         airQualityCards = feed.airQualityMetrics.map(\.card)
@@ -573,8 +597,22 @@ final class ForecastIntelligenceStore: ObservableObject {
             validFrom: feed.validFrom,
             validTo: feed.validTo
         )
-        statusMessage = feed.statusSummary
-            ?? "\(selectedHorizon.title) outlook loaded from processed Build feed for \(feed.locationLabel)."
+        let distance = CLLocation(latitude: resolvedCoordinate.latitude, longitude: resolvedCoordinate.longitude)
+            .distance(from: CLLocation(latitude: feed.latitude, longitude: feed.longitude)) / 1000
+        statusMessage = (feed.statusSummary ?? "\(selectedHorizon.title) outlook loaded from an imported feed.")
+            + " Feed location: \(feed.locationLabel) (\(String(format: "%.1f", distance)) km from selection). Not national coverage."
+    }
+
+    private func clearCurrentForecast() {
+        weatherCards = []
+        airQualityCards = []
+        currentGeneratedAt = nil
+        currentValidFrom = nil
+        currentValidTo = nil
+        activeProviderID = ""
+        evidenceLocation = nil
+        providerLabel = "No current provider"
+        lastSnapshotMessage = nil
     }
 
     private func loadBuildSupportFeeds() {
@@ -585,17 +623,14 @@ final class ForecastIntelligenceStore: ObservableObject {
     }
 
     private func persistCurrentSnapshot() {
-        do {
-            let collections = try evidenceManager.persistOperationalSnapshot(from: currentSnapshotContext())
-            applySnapshotCollections(collections)
-            lastSnapshotMessage = "Snapshot stored for operational use."
-        } catch {
-            lastSnapshotMessage = "Snapshot write failed."
+        let context = currentSnapshotContext()
+        performEvidenceOperation(message: "Snapshot stored for operational use.") { manager in
+            try manager.persistOperationalSnapshot(from: context)
         }
     }
 
     private func loadPersistedForecastEvidence() {
-        applySnapshotCollections(evidenceManager.loadSnapshotCollections())
+        performEvidenceOperation { $0.loadSnapshotCollections() }
     }
 
     private func updateLatestSnapshotPromotionLevel(_ promotionLevel: ForecastPromotionLevel, message: String) {
@@ -603,12 +638,29 @@ final class ForecastIntelligenceStore: ObservableObject {
             lastSnapshotMessage = "No current forecast snapshot is available to promote."
             return
         }
-        do {
-            let collections = try evidenceManager.promoteSnapshot(from: currentSnapshotContext(), to: promotionLevel)
-            applySnapshotCollections(collections)
-            lastSnapshotMessage = message
-        } catch {
-            lastSnapshotMessage = "Snapshot write failed."
+        let context = currentSnapshotContext()
+        performEvidenceOperation(message: message) { manager in
+            try manager.promoteSnapshot(from: context, to: promotionLevel)
+        }
+    }
+
+    private func performEvidenceOperation(message: String? = nil,
+        _ operation: @escaping @Sendable (ForecastEvidencePromotionManaging) throws -> ForecastSnapshotCollections) {
+        let manager = evidenceManager
+        // Documents can be cloud-backed. Serialize evidence I/O without blocking
+        // launch or allowing reads and promotions to race one another.
+        evidenceQueue.async { [weak self] in
+            let result = Result { try operation(manager) }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                switch result {
+                case .success(let collections):
+                    self.applySnapshotCollections(collections)
+                    if let message { self.lastSnapshotMessage = message }
+                case .failure:
+                    self.lastSnapshotMessage = "Forecast evidence could not be read or written."
+                }
+            }
         }
     }
 
@@ -627,42 +679,20 @@ final class ForecastIntelligenceStore: ObservableObject {
 
     private func currentSnapshotContext() -> ForecastSnapshotContext {
         ForecastSnapshotContext(
-            providerID: providerIdentifier,
+            providerID: activeProviderID,
             providerLabel: providerLabel,
-            sourceMode: currentSourceMode,
+            sourceMode: activeSourceMode,
             horizon: selectedHorizon,
             confidence: currentConfidence,
             generatedAt: currentGeneratedAt,
             validFrom: currentValidFrom,
             validTo: currentValidTo,
-            locationLabel: selectedLocationName,
-            coordinate: resolvedCoordinate,
+            locationLabel: evidenceLocation?.name ?? selectedLocationName,
+            coordinate: evidenceLocation?.coordinate ?? resolvedCoordinate,
             statusSummary: statusMessage,
             weatherCards: weatherCards,
             airQualityCards: airQualityCards
         )
-    }
-
-    private var providerIdentifier: String {
-        switch providerLabel.lowercased() {
-        case let label where label.contains("seasonal"):
-            return "open_meteo_seasonal"
-        case let label where label.contains("build"):
-            return "processed_build"
-        default:
-            return "open_meteo"
-        }
-    }
-
-    private var currentSourceMode: ForecastSourceMode {
-        switch sourceState {
-        case .processedFeedActive, .staleData:
-            return .processedFeed
-        case .liveProviderFallback:
-            return .liveFallback
-        case .forecastUnavailable:
-            return .curatedScenarioInput
-        }
     }
 
     private var currentConfidence: ForecastConfidence {
@@ -701,6 +731,19 @@ struct ProcessedForecastFeed: Decodable {
     let trustSummary: ProcessedForecastTrustSummary
     let weatherMetrics: [ProcessedForecastMetric]
     let airQualityMetrics: [ProcessedForecastMetric]
+    let synthetic: Bool?
+
+    var isSynthetic: Bool {
+        synthetic == true || [providerID, providerLabel, trustSummary.sourceMode, trustSummary.note]
+            .contains { $0.localizedCaseInsensitiveContains("synthetic") || $0.localizedCaseInsensitiveContains("demo") }
+    }
+
+    var sourceMode: ForecastSourceMode {
+        let mode = trustSummary.sourceMode.lowercased()
+        if mode.contains("fallback") { return .liveFallback }
+        if mode.contains("curated") || mode.contains("scenario") { return .curatedScenarioInput }
+        return .processedFeed
+    }
 
     enum CodingKeys: String, CodingKey {
         case snapshotID = "snapshot_id"
@@ -717,6 +760,7 @@ struct ProcessedForecastFeed: Decodable {
         case trustSummary = "trust_summary"
         case weatherMetrics = "weather_metrics"
         case airQualityMetrics = "air_quality_metrics"
+        case synthetic
     }
 
     var coordinate: CLLocationCoordinate2D {

@@ -5,7 +5,25 @@
 > contradicts this file, this file wins. Update this file deliberately; do not
 > drift around it.
 
-Last reviewed: 2026-06-23
+Last reviewed: 2026-09-10
+
+## Implementation checkpoint: India portability
+
+The June direction below remains the architectural constraint, not a declaration
+that every proposed capability is complete. The repo now contains initial
+vulnerability, financial and reporting prototypes with tests. Scientific
+calibration, a second peril and buyer validation remain unproven.
+
+The September hardening pass removes the speculative enterprise-readiness panels
+and their shell initialization, bundles the default S engine and dependencies,
+and installs an explicitly synthetic India starter in per-user storage. It also
+adds version-aware caches and current/nearby forecast eligibility. The
+legacy-derived CLI remains the default: the embedded bridge and native rewrite
+must not be promoted merely because packaging works.
+
+See [India portability audit](india-portability-audit.md) for measured validation,
+data locations and limitations. Enterprise maturity is an evidence gate, not a
+self-assigned 9/10 score.
 
 ## 1. What this product is (one paragraph)
 

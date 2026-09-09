@@ -2,7 +2,7 @@
 
 ```
 sudo apt-get install doxygen
-cd /Users/afnan/Desktop/Climate-Liberator/docs
+cd docs
 doxygen Doxyfile
 ```
 
@@ -19,6 +19,8 @@ next:
 ## Engineering docs
 
 - `qa-benchmark-report.md`
+- `india-portability-audit.md` - India-first packaging, data safety, optimization
+  evidence and remaining deployment boundaries.
 
 ## Parked (post-validation) docs
 

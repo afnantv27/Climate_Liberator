@@ -135,15 +135,17 @@ struct IndiaOEDExportResult: Codable, Hashable {
 final class IndiaRiskStore: ObservableObject {
     private struct NearbyLookupCacheKey: Hashable {
         let databasePath: String
-        let latitudeBucket: Int
-        let longitudeBucket: Int
-        let radiusBucket: Int
+        let latitude: Double
+        let longitude: Double
+        let radiusMeters: Double
+        let revision: IndiaDatabaseRevision?
 
         init(databasePath: String, latitude: Double, longitude: Double, radiusMeters: Double) {
             self.databasePath = databasePath
-            self.latitudeBucket = Int((latitude * 100_000).rounded())
-            self.longitudeBucket = Int((longitude * 100_000).rounded())
-            self.radiusBucket = Int(radiusMeters.rounded())
+            self.latitude = latitude
+            self.longitude = longitude
+            self.radiusMeters = radiusMeters
+            self.revision = IndiaDatabaseRevision.read(at: databasePath)
         }
     }
 
@@ -153,6 +155,7 @@ final class IndiaRiskStore: ObservableObject {
     private let demoFeedService: IndiaDemoFeedProviding
     private let rollupService: IndiaPortfolioRollupServicing
     private var nearbyLookupCache: [NearbyLookupCacheKey: IndiaNearbyLookupSnapshot] = [:]
+    private var lookupGeneration = 0
 
     @Published var databasePath: String
     @Published private(set) var buildingCount = 0
@@ -241,6 +244,7 @@ final class IndiaRiskStore: ObservableObject {
     }
 
     func refreshDatabaseStatus() {
+        lookupGeneration += 1
         nearbyLookupCache.removeAll()
         nearbyBuildings = []
         lookupSummary = IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0)
@@ -275,6 +279,14 @@ final class IndiaRiskStore: ObservableObject {
     }
 
     func lookupNearbyBuildings(latitude: Double, longitude: Double) {
+        lookupGeneration += 1
+        let generation = lookupGeneration
+        guard IndiaNearbySearchBounds(latitude: latitude, longitude: longitude, radiusMeters: radiusMeters) != nil else {
+            nearbyBuildings = []
+            lookupSummary = IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0)
+            statusMessage = "Enter valid coordinates and a finite, nonnegative radius."
+            return
+        }
         let availability = lookupAvailability
         guard availability.isEnabled else {
             nearbyBuildings = []
@@ -305,8 +317,12 @@ final class IndiaRiskStore: ObservableObject {
                                                                longitude: longitude,
                                                                radiusMeters: radiusMeters)
             DispatchQueue.main.async {
-                guard self.databasePath == path else { return }
-                self.nearbyLookupCache[cacheKey] = snapshot
+                guard self.databasePath == path, self.lookupGeneration == generation,
+                      self.radiusMeters == radiusMeters else { return }
+                if self.nearbyLookupCache.count >= 32 { self.nearbyLookupCache.removeAll(keepingCapacity: true) }
+                if cacheKey.revision == IndiaDatabaseRevision.read(at: path) {
+                    self.nearbyLookupCache[cacheKey] = snapshot
+                }
                 self.nearbyBuildings = snapshot.buildings
                 self.lookupSummary = snapshot.summary
                 self.statusMessage = snapshot.statusMessage
@@ -345,10 +361,10 @@ final class IndiaRiskStore: ObservableObject {
     }
 
     static func defaultDatabasePath() -> String {
-        "/Users/afnan/Desktop/Build/india-risk-data/db/india_risk.db"
+        AppDataLocations.indiaDatabaseURL.path
     }
 
     static func defaultDemoFeedDirectory() -> String {
-        "/Users/afnan/Desktop/Build/india-risk-data/data/processed/demo"
+        AppDataLocations.indiaDemoDirectory.path
     }
 }

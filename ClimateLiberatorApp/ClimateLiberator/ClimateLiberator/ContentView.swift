@@ -11,9 +11,9 @@ struct ContentView: View {
     @ObservedObject var forecastStore: ForecastIntelligenceStore
     @Environment(\.openWindow) var openWindow
 
-    @AppStorage("climateliberator.binaryPath") var binaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
-    @AppStorage("climateliberator.inputFolder") var inputFolder = "/Users/afnan/Desktop/Climate-Liberator/data/ScottAndBurgan/Clinge"
-    @AppStorage("climateliberator.outputFolder") var outputFolder = ""
+    @AppStorage("climateliberator.binaryPath") var binaryPath = ""
+    @AppStorage("climateliberator.inputFolder") var inputFolder = AppDataLocations.starterStudyDirectory.path
+    @AppStorage("climateliberator.outputFolder") var outputFolder = AppDataLocations.current.runsDirectory.path
     @AppStorage("climateliberator.theme") var theme: ThemeStyle = .night
     // Default to the legacy subprocess engine: it is the verified ground truth.
     // The embedded engine builds but is not yet at output parity with the CLI
@@ -24,8 +24,8 @@ struct ContentView: View {
     @State var showingOutputPicker = false
     @State var showingBinaryPicker = false
     @State var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 52.155, longitude: 5.387),
-        span: MKCoordinateSpan(latitudeDelta: 3.0, longitudeDelta: 3.0)
+        center: CLLocationCoordinate2D(latitude: 12.9716, longitude: 77.5946),
+        span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)
     )
     @StateObject var simulationState = SimulationRunState()
     @State var activeWorkspace: AppWorkspace = .dashboard
@@ -46,19 +46,19 @@ struct ContentView: View {
     @State var showCRSInfo = false
     @AppStorage("climateliberator.rosPalette") var rosPaletteRawValue = RateOfSpreadPalette.terrain.rawValue
     @AppStorage("climateliberator.rosOpacity") var rosOpacity = 0.85
-    @AppStorage("climateliberator.ee.serviceAccount") var earthEngineServiceAccount = "climascan@wildire-modelling.iam.gserviceaccount.com"
-    @AppStorage("climateliberator.ee.keyPath") var earthEngineKeyPath = "/Users/afnan/Library/Application Support/ClimateLiberator/earthengine-key.json"
+    @AppStorage("climateliberator.ee.serviceAccount") var earthEngineServiceAccount = ""
+    @AppStorage("climateliberator.ee.keyPath") var earthEngineKeyPath = ""
     @AppStorage("climateliberator.ee.dataset") var earthEngineDataset = "COPERNICUS/S2_SR"
     @AppStorage("climateliberator.ee.band") var earthEngineBand = "B04"
     @AppStorage("climateliberator.ee.startDate") var earthEngineStartDate = "2025-01-01"
     @AppStorage("climateliberator.ee.endDate") var earthEngineEndDate = "2025-12-31"
     @AppStorage("climateliberator.ee.scaleMeters") var earthEngineScaleInput = "10"
-    @AppStorage("climateliberator.ee.scriptPath") var earthEngineScriptPath = "/Users/afnan/Desktop/ClimateLiberator/ClimateLiberator/Scripts/fetch_from_earth_engine.py"
+    @AppStorage("climateliberator.ee.scriptPath") var earthEngineScriptPath = ""
     @AppStorage("climateliberator.ee.mode") var earthEngineModeRaw = EarthEngineTarget.overlay.rawValue
     @AppStorage("climateliberator.ee.demFilename") var earthEngineDemFilename = "elevation.asc"
     @AppStorage("climateliberator.ee.useStudyBounds") var useStudyAreaBounds = false
     @AppStorage("climateliberator.mapVisible") var mapVisible = false
-    @AppStorage("climateliberator.ee.expanded") var earthEngineExpanded = true
+    @AppStorage("climateliberator.ee.expanded") var earthEngineExpanded = false
     @StateObject var earthEngineState = EarthEngineFetchState()
     @StateObject var indiaRiskStore = IndiaRiskStore()
     @StateObject var exposureIntakeStore = ExposureIntakeStore()
@@ -66,27 +66,19 @@ struct ContentView: View {
     @available(macOS, introduced: 10.8, deprecated: 26)
     let legacyFallbackGeocoder = CLGeocoder()
 
-    let enterprisePlatform: ClimateLiberatorEnterprisePlatform
     let simulationEngineService: SimulationEngineServicing
     let artifactService: SimulationArtifactServicing
     let runConfigService: SimulationRunConfigServicing
     let reviewDiscoveryService: SimulationReviewDiscoveryServicing
     let simOptions: [(label: String, value: String)] = [
-        ("Scott & Burgan", "S"),
-        ("Kitral", "K"),
-        ("FBP-Canada", "C")
+        ("Scott & Burgan", "S")
     ]
-    let preferredBinaryPath = "/Users/afnan/Desktop/Climate-Liberator/Cell2Fire/Cell2Fire"
-    let legacyBinaryPaths = [
-        "/Users/afnan/Desktop/C2F-W/Cell2Fire/Cell2Fire",
-        "/Users/afnan/Desktop/Wildfire Model/Cell2Fire/C2F-W/Cell2Fire/Cell2Fire"
-    ]
+    var preferredBinaryPath: String { AppDataLocations.bundledEngineURL.path }
 
     init(scenarioStore: ScenarioLibraryStore,
          reviewStore: TCFDReviewStore,
          forecastStore: ForecastIntelligenceStore,
-         enterprisePlatform: ClimateLiberatorEnterprisePlatform = .localDefault(),
-         simulationEngineService: SimulationEngineServicing? = nil,
+         simulationEngineService: SimulationEngineServicing = HybridSimulationEngineAdapter(),
          artifactService: SimulationArtifactServicing = SimulationArtifactService(),
          runConfigService: SimulationRunConfigServicing = SimulationRunConfigService(),
          reviewDiscoveryService: SimulationReviewDiscoveryServicing = SimulationReviewDiscoveryService(),
@@ -95,8 +87,7 @@ struct ContentView: View {
         _reviewStore = ObservedObject(wrappedValue: reviewStore)
         _forecastStore = ObservedObject(wrappedValue: forecastStore)
         _outputStore = StateObject(wrappedValue: SimulationOutputStore(treeService: outputTreeService))
-        self.enterprisePlatform = enterprisePlatform
-        self.simulationEngineService = simulationEngineService ?? enterprisePlatform.simulationEngine
+        self.simulationEngineService = simulationEngineService
         self.artifactService = artifactService
         self.runConfigService = runConfigService
         self.reviewDiscoveryService = reviewDiscoveryService
@@ -265,7 +256,7 @@ struct ContentView: View {
         .alert("Study Area Extent", isPresented: $earthEngineState.showExtentInfo) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("When enabled, Climate Liberator reads fuels.asc (or another fuel grid) to derive the map extent. If the grid is projected (e.g., EPSG:28992), the corners are reprojected to WGS84 using gdaltransform so Google Earth Engine receives latitude/longitude bounds. Install GDAL so gdaltransform is available.")
+            Text("Climate Liberator reads the fuel grid to derive the study extent. Projected grids need a .prj file or CRS override. GDAL reprojects the corners to latitude/longitude for Earth Engine. The included synthetic India study uses EPSG:32643.")
         }
         .sheet(isPresented: $simulationState.showLogSheet) {
             LogViewer(logText: simulationState.log, logURL: simulationState.logFileURL, theme: theme)
@@ -273,7 +264,7 @@ struct ContentView: View {
         .alert("CRS Override", isPresented: $showCRSInfo) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("If your RateOfSpread outputs are in a projected CRS (e.g., EPSG:28998 for Amersfoort), enable the override and enter the EPSG code. The exporter will reproject to WGS84 so the KMZ aligns in Google Earth.")
+            Text("For projected inputs, provide a .prj file or the correct EPSG code (for example EPSG:32643 for UTM zone 43N in India). Do not label metre coordinates as latitude/longitude. GDAL is required for reprojection exports.")
         }
     }
 
@@ -333,6 +324,10 @@ struct ContentView: View {
 
     var rootLifecycleView: some View {
         rootStudyAreaObservedView
+        .onReceive(NotificationCenter.default.publisher(for: .climateLiberatorIndiaDataChanged)) { _ in
+            indiaRiskStore.databasePath = AppDataLocations.indiaDatabaseURL.path
+            indiaRiskStore.refreshDatabaseStatus()
+        }
         .onAppear {
             activeWorkspace = .dashboard
             reloadIgnitionCells()

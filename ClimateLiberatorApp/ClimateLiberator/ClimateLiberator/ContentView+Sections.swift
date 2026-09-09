@@ -59,7 +59,6 @@ extension ContentView {
 
     var dashboardWorkspaceView: some View {
         DashboardWorkspaceView(
-            enterpriseReadiness: enterpriseReadinessSummary,
             openClimateSimulation: {
                 activeWorkspace = .operations
             },
@@ -81,7 +80,6 @@ extension ContentView {
             forecastStore: forecastStore,
             activeWorkspace: $activeWorkspace,
             theme: theme,
-            enterpriseReadiness: enterpriseReadinessSummary,
             latestDisclosureReportAvailability: latestDisclosureReportAvailability,
             logActionAvailability: logActionAvailability,
             operationsWorkspaceAvailability: operationsWorkspaceAvailability,
@@ -94,13 +92,6 @@ extension ContentView {
                 simulationState.showLogSheet = true
             }
         )
-    }
-
-    var enterpriseReadinessSummary: EnterpriseReadinessSummary {
-        enterprisePlatform
-            .dashboard
-            .fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputFolder))
-            .readinessSummary
     }
 
     var intelligenceWorkspaceView: some View {
@@ -475,10 +466,12 @@ extension ContentView {
 
     var environmentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingRow(title: "Cell2Fire Binary", theme: theme) {
-                TextField("/path/to/Cell2Fire", text: $binaryPath)
+            SettingRow(title: "Engine Override (Optional)", theme: theme) {
+                TextField("Bundled engine (default)", text: $binaryPath)
                     .themedField(background: theme.fieldBackground, textColor: theme.textColor)
                 Button("Choose…") { showingBinaryPicker = true }
+                Button("Use Bundled") { binaryPath = "" }
+                    .disabled(binaryPath.isEmpty)
             }
 
             SettingRow(title: "Input Folder", theme: theme) {
@@ -492,7 +485,7 @@ extension ContentView {
                     .themedField(background: theme.fieldBackground, textColor: theme.textColor)
                 Button("Choose…") { showingOutputPicker = true }
             }
-            Text("Choose the directory where Cell2Fire should write RateOfSpread outputs.")
+            Text("The bundled engine runs without a source checkout. Choose a writable directory for simulation outputs.")
                 .font(.footnote)
                 .foregroundColor(theme.subtleTextColor)
 
@@ -683,7 +676,7 @@ extension ContentView {
             }
             .toggleStyle(SwitchToggleStyle(tint: theme.accentColor))
 
-            TextField("e.g., 28998 or EPSG:28992", text: $overrideCRSCode)
+            TextField("e.g., EPSG:32643 for UTM 43N", text: $overrideCRSCode)
                 .textFieldStyle(.roundedBorder)
                 .disabled(!useOverrideCRS)
                 .opacity(useOverrideCRS ? 1 : 0.35)

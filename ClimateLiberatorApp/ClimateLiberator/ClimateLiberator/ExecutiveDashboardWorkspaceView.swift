@@ -7,7 +7,6 @@ struct CommandCenterWorkspaceView: View {
     @Binding var activeWorkspace: AppWorkspace
 
     let theme: ThemeStyle
-    let enterpriseReadiness: EnterpriseReadinessSummary
     let latestDisclosureReportAvailability: ActionAvailability
     let logActionAvailability: ActionAvailability
     let operationsWorkspaceAvailability: ActionAvailability
@@ -58,16 +57,16 @@ struct CommandCenterWorkspaceView: View {
                                             detail: reviewStore.financePendingCount() == 0 ? "No package waiting on finance review" : "Finance sign-off still missing on package backlog")
                     }
 
-                    HStack(alignment: .top, spacing: 18) {
-                        dashboardPanelCard(title: "Workflow Readiness",
-                                           subtitle: "High-level readiness only. Detailed blockers stay inside the owning workspace.") {
+                    VStack(alignment: .leading, spacing: 18) {
+                        dashboardPanelCard(title: "Workflow Availability",
+                                           subtitle: "Local inputs and package availability. Review setup details in each workspace.") {
                             readinessRow(title: "Operations workspace", availability: operationsWorkspaceAvailability)
                             readinessRow(title: "Portfolio screening", availability: portfolioIntelligenceAvailability)
                             readinessRow(title: "Disclosure review", availability: disclosureReviewAvailability)
                         }
 
                         dashboardPanelCard(title: "Next Actions",
-                                           subtitle: "Move into the next task without touching technical controls first.") {
+                                           subtitle: "Continue from exposure screening to scenario evidence and disclosure review.") {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("1. Screen site or portfolio • 2. Run scenario • 3. Review disclosure package • 4. Export approved board pack")
                                     .font(.footnote)
@@ -84,7 +83,7 @@ struct CommandCenterWorkspaceView: View {
                                     }
                                     .buttonStyle(.borderedProminent)
 
-                                    Button("Open TCFD Dashboard") {
+                                    Button("Open Disclosure Review") {
                                         openTCFDDashboard()
                                     }
                                     .buttonStyle(.bordered)
@@ -197,44 +196,6 @@ struct CommandCenterWorkspaceView: View {
                         }
                     }
 
-                    dashboardPanelCard(title: "Enterprise Control Plane",
-                                       subtitle: "Current enterprise telemetry coverage, artifact indexing, and service readiness from the local platform façade.") {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                compactDisclosureChip(title: "Coverage", value: enterpriseReadiness.coverageLabel)
-                                compactDisclosureChip(title: "Artifacts", value: "\(enterpriseReadiness.activeArtifactCount)")
-                                compactDisclosureChip(title: "Disclosure manifests", value: "\(enterpriseReadiness.disclosureManifestCount)")
-                            }
-
-                            if let latestSimulationEngineLabel = enterpriseReadiness.latestSimulationEngineLabel {
-                                Text("Latest simulation registry entry: \(latestSimulationEngineLabel)")
-                                    .font(.footnote)
-                                    .foregroundColor(theme.subtleTextColor)
-                            } else {
-                                Text("No simulation artifact has been registered through the enterprise artifact registry yet.")
-                                    .font(.footnote)
-                                    .foregroundColor(theme.subtleTextColor)
-                            }
-
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(enterpriseReadiness.surfaceReadiness.prefix(4)) { readiness in
-                                    HStack {
-                                        Text(readiness.surface.displayLabel)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundColor(.white)
-                                        Spacer()
-                                        Text(readiness.healthLabel)
-                                            .font(.caption.weight(.bold))
-                                            .foregroundColor(readiness.healthColor)
-                                        Text(readiness.detailLabel)
-                                            .font(.caption)
-                                            .foregroundColor(theme.subtleTextColor)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
                 .padding(.top, 110)
                 .padding(.horizontal, 28)
@@ -248,7 +209,9 @@ struct CommandCenterWorkspaceView: View {
             Text("Executive Overview")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
-            Text("Track operational readiness, disclosure status, and the next management actions without crowding the main dashboard. Use this screen when you need detail, not just a launch point.")
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("executive.heading")
+            Text("Track climate-risk evidence, disclosure reviews, and finance follow-ups for India-focused portfolios. Review packages support IFRS S2 / BRSR drafting; they are not a certification of compliance.")
                 .font(.title3)
                 .foregroundColor(Color.white.opacity(0.78))
                 .frame(maxWidth: 940, alignment: .leading)
@@ -257,7 +220,7 @@ struct CommandCenterWorkspaceView: View {
                 executiveTag("Active Scenario", scenarioStore.selectedScenario?.name ?? "No active scenario")
                 executiveTag("Latest Review", reviewStore.bundles.first?.reviewRecord?.reviewStatus.displayName ?? "No package")
                 executiveTag("Overdue Reviews", "\(reviewStore.overdueReviewCount())")
-                executiveTag("Hazard Scope", "Wildfire live • Flood / Heatwave planned")
+                executiveTag("Current Harness", "Wildfire")
             }
         }
         .padding(28)
@@ -334,7 +297,7 @@ struct CommandCenterWorkspaceView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundColor(.white)
-                Text(availability.reason ?? "Ready")
+                Text(availability.reason ?? "Available")
                     .font(.footnote)
                     .foregroundColor(Color.white.opacity(0.72))
             }

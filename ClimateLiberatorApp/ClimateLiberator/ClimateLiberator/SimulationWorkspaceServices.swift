@@ -229,7 +229,7 @@ final class ClimateLiberatorEngineAdapter: SimulationEngineServicing {
     private var activeProcess: Process?
     private let runtimeBinaryURL: URL
 
-    init(runtimeBinaryURL: URL = URL(fileURLWithPath: "/Users/afnan/Desktop/Build/engine-rewrite/build/climate-liberator-engine")) {
+    init(runtimeBinaryURL: URL = AppDataLocations.previewEngineURL) {
         self.runtimeBinaryURL = runtimeBinaryURL
     }
 

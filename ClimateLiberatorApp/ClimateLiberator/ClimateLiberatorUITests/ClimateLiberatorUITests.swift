@@ -27,10 +27,13 @@ final class ClimateLiberatorUITests: XCTestCase {
         let app = configuredApp()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Dashboard"].firstMatch.waitForExistence(timeout: 5))
+        let dashboard = app.radioButtons["Dashboard"].firstMatch
+        XCTAssertTrue(dashboard.waitForExistence(timeout: 5))
+        XCTAssertEqual((dashboard.value as? NSNumber)?.intValue, 1)
         XCTAssertTrue(app.buttons["Open Climate Simulation"].firstMatch.exists)
         XCTAssertTrue(app.buttons["Open Forecast Intelligence"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["Open TCFD Dashboard"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Disclosure Review"].firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["Enterprise Readiness"].exists)
     }
 
     @MainActor
@@ -53,6 +56,10 @@ final class ClimateLiberatorUITests: XCTestCase {
 
         let simulationButton = app.buttons["Open Climate Simulation"].firstMatch
         XCTAssertTrue(simulationButton.waitForExistence(timeout: 5))
+        for _ in 0..<4 where !simulationButton.isHittable {
+            app.scrollViews["dashboard.scroll"].firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+        }
+        XCTAssertTrue(simulationButton.isHittable)
         simulationButton.click()
 
         XCTAssertTrue(waitForAnyElement(in: app, identifiers: [
@@ -67,7 +74,7 @@ final class ClimateLiberatorUITests: XCTestCase {
         let app = configuredApp()
         app.launch()
 
-        let tcfdButton = app.buttons["Open TCFD Dashboard"].firstMatch
+        let tcfdButton = app.buttons["Open Disclosure Review"].firstMatch
         XCTAssertTrue(tcfdButton.waitForExistence(timeout: 5))
         tcfdButton.click()
 
