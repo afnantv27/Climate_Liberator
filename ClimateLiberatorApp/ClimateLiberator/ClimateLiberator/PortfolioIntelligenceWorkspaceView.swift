@@ -9,7 +9,7 @@ struct PortfolioIntelligenceWorkspaceView: View {
     @Binding var activeWorkspace: AppWorkspace
 
     let theme: ThemeStyle
-    let openTCFDDashboard: () -> Void
+    let openDisclosure: () -> Void
 
     var body: some View {
         ZStack {
@@ -297,7 +297,7 @@ struct PortfolioIntelligenceWorkspaceView: View {
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Portfolio Intelligence")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(.appPageTitle)
                 .foregroundColor(.white)
             Text("Screen asset concentration, inspect selected sites, and understand exposure before moving into simulation or disclosure review.")
                 .font(.title3)
@@ -317,8 +317,8 @@ struct PortfolioIntelligenceWorkspaceView: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button("Open TCFD Dashboard") {
-                    openTCFDDashboard()
+                Button("Open Disclosure") {
+                    openDisclosure()
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -381,7 +381,7 @@ struct PortfolioIntelligenceWorkspaceView: View {
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.72))
             Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.appMetric)
                 .foregroundColor(.white)
             Text(detail)
                 .font(.footnote)
@@ -404,7 +404,7 @@ struct PortfolioIntelligenceWorkspaceView: View {
                                                    @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.title3.bold())
+                .font(.appSectionTitle)
                 .foregroundColor(.white)
             Text(subtitle)
                 .font(.footnote)

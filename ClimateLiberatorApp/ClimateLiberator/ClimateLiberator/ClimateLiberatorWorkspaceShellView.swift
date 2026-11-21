@@ -8,8 +8,9 @@ struct ClimateLiberatorWorkspaceShellView: View {
     let executiveOverviewView: AnyView
     let portfolioIntelligenceView: AnyView
     let operationsView: AnyView
+    let ghgAccountingView: AnyView
+    let disclosureView: AnyView
     let operationsOverlayControls: AnyView
-    let openTCFDDashboard: () -> Void
     let quitApplication: () -> Void
 
     var body: some View {
@@ -38,6 +39,10 @@ struct ClimateLiberatorWorkspaceShellView: View {
             return portfolioIntelligenceView
         case .operations:
             return operationsView
+        case .ghgAccounting:
+            return ghgAccountingView
+        case .disclosure:
+            return disclosureView
         }
     }
 
@@ -52,7 +57,7 @@ struct ClimateLiberatorWorkspaceShellView: View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Text("Climate Liberator")
-                    .font(.headline.weight(.semibold))
+                    .font(.headline)
                 if showFocusLabel {
                     Text("India-first")
                         .font(.subheadline)
@@ -73,14 +78,9 @@ struct ClimateLiberatorWorkspaceShellView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 520)
+            .frame(maxWidth: 720)
 
             Spacer(minLength: 0)
-
-            Button("Open Disclosure Review") {
-                openTCFDDashboard()
-            }
-            .buttonStyle(.bordered)
 
             Button(action: quitApplication) {
                 Label("Quit", systemImage: "xmark.circle.fill")

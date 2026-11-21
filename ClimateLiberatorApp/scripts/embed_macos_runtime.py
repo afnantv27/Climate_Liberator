@@ -11,6 +11,20 @@ def run(*args):
     return subprocess.check_output(args, text=True).strip()
 
 
+def remove_signature(binary, unsigned):
+    """Strip a code signature before editing load commands.
+
+    install_name_tool warns that its edit invalidates an existing signature; with
+    the signature removed first there is nothing to invalidate. Every edited
+    binary is signed again below (nested code here, the app by Xcode).
+    """
+    if binary in unsigned:
+        return
+    subprocess.run(["/usr/bin/codesign", "--remove-signature", str(binary)],
+                   check=False, capture_output=True)
+    unsigned.add(binary)
+
+
 def dependencies(binary):
     return [line.strip().split(" (compatibility version")[0]
             for line in run("/usr/bin/otool", "-L", str(binary)).splitlines()[1:]]
@@ -38,6 +52,7 @@ def embed(app, engine, source):
     pending = [*sorted((app / "Contents/MacOS").iterdir()), helper]
     copied = {}
     modified = []
+    unsigned = set()
     while pending:
         binary = pending.pop()
         for dependency in dependencies(binary):
@@ -60,6 +75,7 @@ def embed(app, engine, source):
                 copied[name] = original
                 shutil.copy2(original, destination)
                 os.chmod(destination, 0o755)
+                remove_signature(destination, unsigned)
                 run("/usr/bin/install_name_tool", "-id", f"@rpath/{name}", str(destination))
                 pending.append(destination)
                 # Homebrew formula licenses accompany redistributed native libraries.
@@ -69,6 +85,7 @@ def embed(app, engine, source):
                         if license_file.is_file():
                             shutil.copy2(license_file, license_dir / f"{license_root.parent.name}-{license_file.name}")
             relative = f"@loader_path/{name}" if binary.parent == frameworks else f"@loader_path/../Frameworks/{name}"
+            remove_signature(binary, unsigned)
             run("/usr/bin/install_name_tool", "-change", dependency, relative, str(binary))
         modified.append(binary)
     identity = os.environ.get("EXPANDED_CODE_SIGN_IDENTITY") or "-"

@@ -63,12 +63,15 @@ extension ContentView {
                 activeWorkspace = .operations
             },
             openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") },
+            openDisclosure: { activeWorkspace = .disclosure },
             openCommandCenter: {
                 activeWorkspace = .commandCenter
             },
             openPortfolioIntelligence: {
                 activeWorkspace = .intelligence
+            },
+            openGHGAccounting: {
+                activeWorkspace = .ghgAccounting
             }
         )
     }
@@ -85,7 +88,7 @@ extension ContentView {
             operationsWorkspaceAvailability: operationsWorkspaceAvailability,
             portfolioIntelligenceAvailability: portfolioIntelligenceAvailability,
             disclosureReviewAvailability: disclosureReviewAvailability,
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") },
+            openDisclosure: { activeWorkspace = .disclosure },
             openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
             openOperationsLog: {
                 activeWorkspace = .operations
@@ -101,7 +104,7 @@ extension ContentView {
             mapRegion: $mapRegion,
             activeWorkspace: $activeWorkspace,
             theme: theme,
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") }
+            openDisclosure: { activeWorkspace = .disclosure }
         )
     }
 
@@ -111,7 +114,7 @@ extension ContentView {
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.72))
             Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.appMetric)
                 .foregroundColor(.white)
             Text(detail)
                 .font(.footnote)
@@ -134,7 +137,7 @@ extension ContentView {
                                                    @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.title3.bold())
+                .font(.appSectionTitle)
                 .foregroundColor(.white)
             Text(subtitle)
                 .font(.footnote)
@@ -519,7 +522,7 @@ extension ContentView {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
                 if scenarioStore.scenarios.isEmpty {
-                    Text("No saved scenarios yet. Open the governance dashboard to create one.")
+                    Text("No saved scenarios yet. Use New Scenario to create one.")
                         .font(.footnote)
                         .foregroundColor(theme.subtleTextColor)
                 } else {
@@ -544,10 +547,7 @@ extension ContentView {
                     }
                     .disabled(!selectedScenarioApplicationAvailability.isEnabled)
 
-                    Button("Open TCFD Dashboard") {
-                        openWindow(id: "tcfd-dashboard")
-                    }
-                    .buttonStyle(.bordered)
+                    ScenarioLibraryControls(store: scenarioStore)
                 }
 
                 if let reason = selectedScenarioApplicationAvailability.reason, !selectedScenarioApplicationAvailability.isEnabled {

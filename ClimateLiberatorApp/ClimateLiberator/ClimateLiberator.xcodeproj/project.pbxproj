@@ -258,10 +258,13 @@
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
-			files = ();
-			inputPaths = ();
-			outputPaths = ();
+			files = (
+			);
+			inputPaths = (
+			);
 			name = "Embed portable runtime";
+			outputPaths = (
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
 			shellScript = "set -euo pipefail\n/usr/bin/python3 \"${SRCROOT}/../scripts/embed_macos_runtime.py\" \"${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}\" \"${SRCROOT}/../build/bin/Cell2Fire\" \"${SRCROOT}/../../Cell2Fire\"\n";

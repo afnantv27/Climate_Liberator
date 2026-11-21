@@ -3,9 +3,10 @@ import SwiftUI
 struct DashboardWorkspaceView: View {
     let openClimateSimulation: () -> Void
     let openForecastIntelligence: () -> Void
-    let openTCFDDashboard: () -> Void
+    let openDisclosure: () -> Void
     let openCommandCenter: () -> Void
     let openPortfolioIntelligence: () -> Void
+    let openGHGAccounting: () -> Void
 
     var body: some View {
         ZStack {
@@ -79,12 +80,12 @@ struct DashboardWorkspaceView: View {
                             )
 
                             dashboardToolCard(
-                                title: "Disclosure Review",
-                                subtitle: "Review scenario evidence and disclosure drafts for IFRS S2 / BRSR.",
+                                title: "Disclosure",
+                                subtitle: "BRSR, BRSR Core and IFRS S2 for client companies: KPIs, review, sign-off and reports.",
                                 icon: "doc.text.magnifyingglass",
                                 accent: Color.teal,
-                                actionTitle: "Open Disclosure Review",
-                                action: openTCFDDashboard,
+                                actionTitle: "Open Disclosure",
+                                action: openDisclosure,
                                 prominence: .secondary
                             )
                         }
@@ -104,13 +105,13 @@ struct DashboardWorkspaceView: View {
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Dashboard")
-                .font(.system(size: 42, weight: .bold, design: .rounded))
+                .font(.appDisplay)
                 .foregroundColor(.white)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("dashboard.heading")
 
             Text("India-First Climate Risk")
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .font(.title2.weight(.semibold))
                 .foregroundColor(Color.white.opacity(0.92))
 
             Text("Screen exposure, explore hazard scenarios, and review financial impacts and disclosure evidence. A shared climate-risk core for insurers and sustainability teams, with wildfire as the first hazard harness.")
@@ -162,6 +163,15 @@ struct DashboardWorkspaceView: View {
                 accent: Color.green,
                 action: openPortfolioIntelligence
             )
+
+            secondaryCard(
+                title: "GHG Accounting",
+                subtitle: "Draw a city boundary and build a GPC BASIC/BASIC+ inventory with factors from connected databases.",
+                buttonTitle: "Open GHG Accounting",
+                icon: "leaf.circle",
+                accent: Color.mint,
+                action: openGHGAccounting
+            )
         }
     }
 
@@ -191,7 +201,7 @@ struct DashboardWorkspaceView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(prominence == .primary ? .system(size: 28, weight: .bold, design: .rounded) : .title3.weight(.bold))
+                    .font(prominence == .primary ? .title2.weight(.semibold) : .appSectionTitle)
                     .foregroundColor(.white)
                 Text(subtitle)
                     .font(prominence == .primary ? .title3 : .body)
@@ -237,7 +247,7 @@ struct DashboardWorkspaceView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(.headline.weight(.bold))
+                    .font(.headline)
                     .foregroundColor(.white)
                 Text(subtitle)
                     .font(.footnote)

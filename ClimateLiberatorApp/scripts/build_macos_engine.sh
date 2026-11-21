@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Xcode GUI builds do not inherit the shell PATH, so add the standard Homebrew locations.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE="${1:-$SCRIPT_DIR/../../Cell2Fire}"
 OUTPUT="${2:-$SCRIPT_DIR/../build}"

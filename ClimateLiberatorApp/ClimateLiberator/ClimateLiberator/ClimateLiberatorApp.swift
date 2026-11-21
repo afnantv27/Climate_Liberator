@@ -3,9 +3,14 @@ import AppKit
 
 @main
 struct ClimateLiberatorApp: App {
+    /// Asks to save unsaved GHG inventories and disclosure engagements before quitting.
+    @NSApplicationDelegateAdaptor(ClimateLiberatorAppDelegate.self) private var appDelegate
     @StateObject private var scenarioStore: ScenarioLibraryStore
     @StateObject private var reviewStore: TCFDReviewStore
     @StateObject private var forecastStore: ForecastIntelligenceStore
+    @StateObject private var ghgInventoryStore = GPCInventoryStore()
+    @StateObject private var emissionFactorStore = EmissionFactorLibraryStore()
+    @StateObject private var disclosureStore = DisclosureStore()
     @State private var bootstrapError: String?
 
     init() {
@@ -21,7 +26,9 @@ struct ClimateLiberatorApp: App {
     var body: some Scene {
         WindowGroup {
             LaunchExperienceView {
-                ContentView(scenarioStore: scenarioStore, reviewStore: reviewStore, forecastStore: forecastStore)
+                ContentView(scenarioStore: scenarioStore, reviewStore: reviewStore, forecastStore: forecastStore,
+                            ghgInventoryStore: ghgInventoryStore, emissionFactorStore: emissionFactorStore,
+                            disclosureStore: disclosureStore)
             }
             .alert("Local data setup failed", isPresented: Binding(
                 get: { bootstrapError != nil }, set: { if !$0 { bootstrapError = nil } }
@@ -33,9 +40,6 @@ struct ClimateLiberatorApp: App {
         }
         .defaultSize(width: 1240, height: 820)
 
-        Window("Disclosure Review", id: "tcfd-dashboard") {
-            TCFDDashboardScreen(scenarioStore: scenarioStore, reviewStore: reviewStore, forecastStore: forecastStore)
-        }
         Window("Forecast Intelligence", id: "forecast-intelligence") {
             ForecastIntelligenceWindow(store: forecastStore)
         }
@@ -60,8 +64,8 @@ private struct LaunchExperienceView<Content: View>: View {
                                 .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                             LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
                             VStack(spacing: 8) {
-                                Text("Climate Liberator").font(.custom("Avenir Next", size: 36))
-                                Text("India Climate Risk Intelligence").font(.custom("Avenir Next", size: 18))
+                                Text("Climate Liberator").font(.appDisplay)
+                                Text("India Climate Risk Intelligence").font(.title3.weight(.medium))
                             }
                             .foregroundStyle(.white).padding(.bottom, 52)
                         }

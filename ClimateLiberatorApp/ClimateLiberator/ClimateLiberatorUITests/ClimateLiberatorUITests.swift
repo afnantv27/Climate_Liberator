@@ -32,7 +32,7 @@ final class ClimateLiberatorUITests: XCTestCase {
         XCTAssertEqual((dashboard.value as? NSNumber)?.intValue, 1)
         XCTAssertTrue(app.buttons["Open Climate Simulation"].firstMatch.exists)
         XCTAssertTrue(app.buttons["Open Forecast Intelligence"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["Open Disclosure Review"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Disclosure"].firstMatch.exists)
         XCTAssertFalse(app.staticTexts["Enterprise Readiness"].exists)
     }
 
@@ -70,18 +70,17 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testTCFDDashboardOpensFromDashboard() throws {
+    func testDisclosureOpensFromDashboard() throws {
         let app = configuredApp()
         app.launch()
 
-        let tcfdButton = app.buttons["Open Disclosure Review"].firstMatch
-        XCTAssertTrue(tcfdButton.waitForExistence(timeout: 5))
-        tcfdButton.click()
+        let disclosureButton = app.buttons["Open Disclosure"].firstMatch
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.click()
 
         XCTAssertTrue(waitForAnyElement(in: app, identifiers: [
-            "TCFD Dashboard",
-            "Board Disclosure Workspace",
-            "TCFD Wildfire Dashboard"
+            "BRSR, BRSR Core and IFRS S2 reporting for client companies.",
+            "New Client"
         ], timeout: 5))
     }
 

@@ -30,7 +30,12 @@ brew install libomp libtiff boost
 open ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
 # Or build, verify relocation, and create a local release ZIP:
 bash scripts/package_macos.sh
+# Or build and replace the copy in Applications (what Finder, Dock and Spotlight open):
+bash scripts/install_macos.sh
 ```
+
+Xcode's Run launches a separate Debug build. After code changes, run
+`scripts/install_macos.sh` so the app you open from Applications is current.
 
 Xcode 26.3 was used for local validation. Build scripts discover dependency
 locations rather than assuming a Homebrew installation path. The package is
@@ -80,9 +85,10 @@ Engine preparation remain optional, separately configured workflows.
 ## Product and Engine Boundaries
 
 The app retains Dashboard, Portfolio Intelligence, Climate Simulation, Forecast
-Intelligence, Executive Overview and Disclosure Review. Existing TCFD-named code
-supports reporting work toward IFRS S2/BRSR drafts; it is not a claim of
-regulatory compliance or actuarial validation.
+Intelligence, Executive Overview, GHG Accounting and Disclosure. Disclosure
+prepares BRSR, BRSR Core and IFRS S2 drafts for client companies (see
+`docs/disclosure-platform.md`); it is not a claim of regulatory compliance or
+assurance.
 
 The supported simulation UI targets **S (Scott & Burgan)**. The default backend
 is built from the Cell2Fire-derived source in this repository and packaged inside
@@ -94,6 +100,15 @@ Speculative control-plane readiness panels have been removed from the active
 shell. Reversible enterprise proposals remain under `docs/future/`; these are
 not deployed authentication, multi-user services or proven availability.
 See [the portability audit](docs/india-portability-audit.md).
+
+## GHG Accounting (GPC)
+
+The **GHG Inventory** workspace builds city inventories under the GPC: draw or
+import a boundary, enter activity data per sector with emission factors, and
+review BASIC / BASIC+ totals with a completeness check. Factors come from a
+bundled IPCC/CEA reference library or connected databases (Climatiq, any CSV
+URL, any JSON/REST API); API keys are kept in the Keychain. It is a separate
+track from the risk core. See [GHG accounting](docs/ghg-accounting.md).
 
 ## Tests
 

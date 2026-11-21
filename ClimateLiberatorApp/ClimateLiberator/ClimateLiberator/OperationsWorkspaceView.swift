@@ -42,7 +42,7 @@ struct OperationsWorkspaceView<HeaderControls: View,
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Climate Liberator Operations Console")
-                            .font(.title2.bold())
+                            .font(.appPageTitle)
                             .foregroundColor(style.textColor)
                         Text("Site context, run preparation, wildfire execution, and evidence review.")
                             .font(.footnote)

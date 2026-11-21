@@ -202,6 +202,8 @@ enum AppWorkspace: String, CaseIterable, Identifiable {
     case commandCenter
     case intelligence
     case operations
+    case ghgAccounting
+    case disclosure
 
     var id: String { rawValue }
 
@@ -211,6 +213,8 @@ enum AppWorkspace: String, CaseIterable, Identifiable {
         case .commandCenter: return "Executive Overview"
         case .intelligence: return "Portfolio Intelligence"
         case .operations: return "Simulation Workspace"
+        case .ghgAccounting: return "GHG Accounting (GPC)"
+        case .disclosure: return "Disclosure (BRSR · IFRS S2)"
         }
     }
 
@@ -220,6 +224,8 @@ enum AppWorkspace: String, CaseIterable, Identifiable {
         case .commandCenter: return "Overview"
         case .intelligence: return "Portfolio"
         case .operations: return "Simulation"
+        case .ghgAccounting: return "GHG Inventory"
+        case .disclosure: return "Disclosure"
         }
     }
 
@@ -233,6 +239,10 @@ enum AppWorkspace: String, CaseIterable, Identifiable {
             return "India screening, demo workflow, and portfolio concentration analysis."
         case .operations:
             return "Map-based modelling, inputs, and run execution."
+        case .ghgAccounting:
+            return "City GHG inventories (GPC BASIC/BASIC+) with emission factors from connected databases."
+        case .disclosure:
+            return "BRSR, BRSR Core and IFRS S2 reporting for client companies: data, review, sign-off and reports."
         }
     }
 }

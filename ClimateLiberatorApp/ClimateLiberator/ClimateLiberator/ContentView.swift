@@ -62,6 +62,12 @@ struct ContentView: View {
     @StateObject var earthEngineState = EarthEngineFetchState()
     @StateObject var indiaRiskStore = IndiaRiskStore()
     @StateObject var exposureIntakeStore = ExposureIntakeStore()
+    /// Owned by the app (not the window) so unsaved inventories survive a closed window
+    /// and the quit prompt can find them.
+    @ObservedObject var ghgInventoryStore: GPCInventoryStore
+    @ObservedObject var emissionFactorStore: EmissionFactorLibraryStore
+    /// Owned by the app so unsaved client engagements survive a closed window.
+    @ObservedObject var disclosureStore: DisclosureStore
     @State var reviewRefreshWorkItem: DispatchWorkItem?
     @available(macOS, introduced: 10.8, deprecated: 26)
     let legacyFallbackGeocoder = CLGeocoder()
@@ -78,6 +84,9 @@ struct ContentView: View {
     init(scenarioStore: ScenarioLibraryStore,
          reviewStore: TCFDReviewStore,
          forecastStore: ForecastIntelligenceStore,
+         ghgInventoryStore: GPCInventoryStore,
+         emissionFactorStore: EmissionFactorLibraryStore,
+         disclosureStore: DisclosureStore,
          simulationEngineService: SimulationEngineServicing = HybridSimulationEngineAdapter(),
          artifactService: SimulationArtifactServicing = SimulationArtifactService(),
          runConfigService: SimulationRunConfigServicing = SimulationRunConfigService(),
@@ -86,6 +95,9 @@ struct ContentView: View {
         _scenarioStore = ObservedObject(wrappedValue: scenarioStore)
         _reviewStore = ObservedObject(wrappedValue: reviewStore)
         _forecastStore = ObservedObject(wrappedValue: forecastStore)
+        _ghgInventoryStore = ObservedObject(wrappedValue: ghgInventoryStore)
+        _emissionFactorStore = ObservedObject(wrappedValue: emissionFactorStore)
+        _disclosureStore = ObservedObject(wrappedValue: disclosureStore)
         _outputStore = StateObject(wrappedValue: SimulationOutputStore(treeService: outputTreeService))
         self.simulationEngineService = simulationEngineService
         self.artifactService = artifactService
@@ -206,8 +218,19 @@ struct ContentView: View {
                     onToggleExpanded: toggleControlPanel
                 )
             ),
+            ghgAccountingView: AnyView(
+                GHGAccountingWorkspaceView(inventoryStore: ghgInventoryStore,
+                                           factorStore: emissionFactorStore,
+                                           theme: theme)
+            ),
+            disclosureView: AnyView(
+                DisclosureWorkspaceView(store: disclosureStore,
+                                        ghgStore: ghgInventoryStore,
+                                        evidenceStore: reviewStore,
+                                        theme: theme,
+                                        openGHGAccounting: { activeWorkspace = .ghgAccounting })
+            ),
             operationsOverlayControls: AnyView(mapModeControls),
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") },
             quitApplication: quitApplication
         )
     }

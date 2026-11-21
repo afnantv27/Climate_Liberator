@@ -100,3 +100,4 @@ struct ClimateLiberatorDemoStep: Identifiable {
     let detail: String
     let output: String
 }
+

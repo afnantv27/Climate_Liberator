@@ -113,7 +113,7 @@ discard.
 | `FinancialLossEngine` | **Keep, promote** | Stage 4 core. Already buyer-agnostic. |
 | `ExposureIntake` / OED / India SQLite store | **Keep, generalize** | Stage 2. Strip any wildfire-specific assumptions. |
 | Vulnerability curves | **BUILD — this is the gap** | Hazard and money exist; the intensity→damage middle does not. |
-| `TCFDDashboard*` + TCFD stores | **Relabel + decompose** | Re-anchor to IFRS S2, add BRSR mapping. Break the 2,694-line monolith into per-pillar views. |
+| `TCFDDashboard*` + TCFD stores | **Done (Nov 2026)** | Dashboard window deleted; replaced by the modular Disclosure workspace (`Disclosure/`, see `disclosure-platform.md`). `TCFDReviewStore` remains only as the source of wildfire simulation packages used as physical-risk evidence. |
 | `ContentView.swift` (4,856 lines) | **Decompose — urgent** | Primary source of "losing track". Split per workspace, no behavior change. |
 | `EnterprisePlatform*` contracts, SLO catalog, readiness plan | **Park (`docs/future/`)** | Premature for a pre-user product. Do not build against it yet. |
 
@@ -140,8 +140,8 @@ Each step must keep the **wildfire → BRSR** slice running.
    behavior change. Buys back maintainability.
 3. **Build the vulnerability layer** (stage 3) — even crude curves — so wildfire
    intensity actually drives `FinancialLossEngine` instead of being hand-wired.
-4. **Fork the reporting surface** (stage 5) — rename TCFD → IFRS S2, add a BRSR
-   field mapping. One run then produces both an insurer summary and a disclosure
+4. **Fork the reporting surface** (stage 5) — done: the Disclosure workspace
+   covers BRSR, BRSR Core and IFRS S2 (see `disclosure-platform.md`). One run then produces both an insurer summary and a disclosure
    draft.
 5. **Add a second peril** (flood or cyclone) as a second `HazardModel`. This is
    the real test of the framework. If steps 1–4 were honest, this is mostly data
@@ -161,3 +161,13 @@ stage 1, produces **both**:
 
 and a **second peril** can be added by implementing only a new `HazardModel` plus
 its vulnerability curves — touching nothing in stages 2, 4, or 5.
+
+## 9. Separate track: GHG accounting (added 2026-11)
+
+The GHG Accounting workspace (GPC city inventories and an emission-factor
+calculator with database connectors) is a deliberate owner decision. It
+measures emissions; it is not a hazard, exposure, vulnerability or financial
+stage. It lives in `GHGAccounting/`, imports nothing from stages 1–4, and must
+not be imported by them, so the wildfire → BRSR slice is unaffected. A later
+link to the BRSR surface (Principle 6 Scope 1/2 indicators) should be a thin
+adapter in stage 5. See [ghg-accounting.md](ghg-accounting.md).

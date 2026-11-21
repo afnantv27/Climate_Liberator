@@ -65,7 +65,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Forecast Intelligence")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(.appPageTitle)
                     .foregroundColor(.white)
                 Text("A dedicated weather, climate-variable, and air-quality outlook window for business planning. Keep it separate from hazard execution and disclosure review.")
                     .font(.body)
@@ -78,7 +78,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Location Search")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 TextField("Search city, district, facility, or asset location", text: $store.searchQuery)
@@ -153,7 +153,7 @@ struct ForecastIntelligenceWindow: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(store.sourceStateTitle)
-                        .font(.headline.weight(.semibold))
+                        .font(.headline)
                         .foregroundColor(.white)
                     Text(store.sourceStateDetail)
                         .font(.footnote)
@@ -172,7 +172,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Variable Support Matrix")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
@@ -201,7 +201,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Provider Strategy")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
                 Text(store.providerNote)
                     .font(.footnote)
@@ -220,7 +220,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Build Coverage")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 if let overview = store.forecastOverview {
@@ -242,7 +242,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Provider Trust")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 if store.providerTrustEntries.isEmpty {
@@ -269,7 +269,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Warning Readiness")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 if let warningSummary = store.warningSummary {
@@ -290,7 +290,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Data Trust")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -319,7 +319,7 @@ struct ForecastIntelligenceWindow: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(store.selectedLocationName)
-                            .font(.title3.bold())
+                            .font(.appSectionTitle)
                             .foregroundColor(.white)
                         Text(store.selectedHorizon.providerStatus)
                             .font(.footnote)
@@ -353,7 +353,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Forecast Variables")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
                 Text(store.forecastVariablesSubtitle)
                     .font(.footnote)
@@ -372,7 +372,7 @@ struct ForecastIntelligenceWindow: View {
         dashboardCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Air Quality Outlook")
-                    .font(.title3.bold())
+                    .font(.appSectionTitle)
                     .foregroundColor(.white)
                 Text(store.airQualitySubtitle)
                     .font(.footnote)
@@ -397,7 +397,7 @@ struct ForecastIntelligenceWindow: View {
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.74))
             Text(card.value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.appMetric)
                 .foregroundColor(.white)
             Text(card.detail)
                 .font(.caption)
@@ -441,7 +441,7 @@ struct ForecastIntelligenceWindow: View {
     private func trustPill(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title.uppercased())
-                .font(.caption2.weight(.bold))
+                .font(.caption2.weight(.semibold))
                 .foregroundColor(Color.white.opacity(0.58))
             Text(value)
                 .font(.footnote.weight(.semibold))
@@ -458,7 +458,7 @@ struct ForecastIntelligenceWindow: View {
 
     private func matrixHeader(_ text: String) -> some View {
         Text(text)
-            .font(.caption.weight(.bold))
+            .font(.caption.weight(.semibold))
             .foregroundColor(Color.white.opacity(0.66))
             .frame(maxWidth: .infinity, alignment: .leading)
     }

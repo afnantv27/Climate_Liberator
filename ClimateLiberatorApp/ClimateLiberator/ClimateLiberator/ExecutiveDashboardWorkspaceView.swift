@@ -12,7 +12,7 @@ struct CommandCenterWorkspaceView: View {
     let operationsWorkspaceAvailability: ActionAvailability
     let portfolioIntelligenceAvailability: ActionAvailability
     let disclosureReviewAvailability: ActionAvailability
-    let openTCFDDashboard: () -> Void
+    let openDisclosure: () -> Void
     let openForecastIntelligence: () -> Void
     let openOperationsLog: () -> Void
 
@@ -83,8 +83,8 @@ struct CommandCenterWorkspaceView: View {
                                     }
                                     .buttonStyle(.borderedProminent)
 
-                                    Button("Open Disclosure Review") {
-                                        openTCFDDashboard()
+                                    Button("Open Disclosure") {
+                                        openDisclosure()
                                     }
                                     .buttonStyle(.bordered)
                                 }
@@ -207,7 +207,7 @@ struct CommandCenterWorkspaceView: View {
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Executive Overview")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.appPageTitle)
                 .foregroundColor(.white)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("executive.heading")
@@ -247,7 +247,7 @@ struct CommandCenterWorkspaceView: View {
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.72))
             Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.appMetric)
                 .foregroundColor(.white)
             Text(detail)
                 .font(.footnote)
@@ -270,7 +270,7 @@ struct CommandCenterWorkspaceView: View {
                                                    @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.title3.bold())
+                .font(.appSectionTitle)
                 .foregroundColor(.white)
             Text(subtitle)
                 .font(.footnote)
