@@ -36,10 +36,10 @@ final class ClientsAndClustersTests: XCTestCase {
 
     func testRegisterIgnoresNoOpEditsAndTracksUnsaved() {
         let store = ClientRegistryStore(loadFromDisk: false)
-        let client = store.createClient(name: "Knit Co")
+        let client = store.createClient(name: "Moulding Co")
         store.save(id: client.id)
         XCTAssertFalse(store.isUnsaved(client.id))
-        store.update(client.id) { $0.name = "Knit Co" }
+        store.update(client.id) { $0.name = "Moulding Co" }
         XCTAssertFalse(store.isUnsaved(client.id), "Writing back the same value is not an edit")
         store.addSite(to: client.id, name: "Plant")
         XCTAssertTrue(store.isUnsaved(client.id))
@@ -48,11 +48,11 @@ final class ClientsAndClustersTests: XCTestCase {
 
     func testClustersMergeCaseAndSpacing() {
         let store = ClientRegistryStore(loadFromDisk: false)
-        store.createClient(name: "A", cluster: "Tiruppur Knitwear")
-        store.createClient(name: "B", cluster: " tiruppur knitwear ")
+        store.createClient(name: "A", cluster: "Chennai Polymer")
+        store.createClient(name: "B", cluster: " chennai polymer ")
         store.createClient(name: "C", cluster: "")
-        XCTAssertEqual(store.clusters, ["Tiruppur Knitwear"])
-        XCTAssertEqual(store.clients(inCluster: "TIRUPPUR KNITWEAR").count, 2)
+        XCTAssertEqual(store.clusters, ["Chennai Polymer"])
+        XCTAssertEqual(store.clients(inCluster: "CHENNAI POLYMER").count, 2)
     }
 
     func testRevertRemovesNeverSavedClient() {
