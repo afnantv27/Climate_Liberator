@@ -147,12 +147,12 @@ final class ReduceTests: XCTestCase {
         let store = ReductionStore(loadFromDisk: false)
         let client = UUID()
         XCTAssertTrue(store.plan(for: client).isEmpty)
-        store.update(client, clientName: "Knit Co") { _ in }
+        store.update(client, clientName: "Moulding Co") { _ in }
         XCTAssertNil(store.plans[client], "No change, no plan")
-        store.upsertTarget(target(), client: client, name: "Knit Co")
+        store.upsertTarget(target(), client: client, name: "Moulding Co")
         XCTAssertEqual(store.plans[client]?.targets.count, 1)
         XCTAssertTrue(store.isUnsaved(client))
-        XCTAssertEqual(store.unsavedItemNames, ["Knit Co"])
+        XCTAssertEqual(store.unsavedItemNames, ["Moulding Co"])
         XCTAssertTrue(store.save(clientID: client))
         XCTAssertFalse(store.isUnsaved(client))
     }
