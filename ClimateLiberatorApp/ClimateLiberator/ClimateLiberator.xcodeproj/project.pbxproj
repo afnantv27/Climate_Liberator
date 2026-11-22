@@ -103,6 +103,7 @@
 				447BCF0A2F5CDF610079DEA7 /* Sources */,
 				447BCF0B2F5CDF610079DEA7 /* Frameworks */,
 				447BCF0C2F5CDF610079DEA7 /* Resources */,
+				AA0C2F01B001C2F300000002 /* Embed portable runtime */,
 			);
 			buildRules = (
 			);
@@ -251,7 +252,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "set -euo pipefail\n\nBUILD_DIR=\"${SRCROOT}/../build\"\nLIB_FILE=\"${BUILD_DIR}/lib/libcell2fire.a\"\n\n# Skip rebuild if library already exists and is fresh (< 1 hour old)\nif [ -f \"$LIB_FILE\" ]; then\n  AGE=$(( $(date +%s) - $(stat -f %m \"$LIB_FILE\") ))\n  if [ $AGE -lt 3600 ]; then\n    echo \"libcell2fire.a is fresh (${AGE}s old), skipping rebuild.\"\n    exit 0\n  fi\nfi\n\necho \"Building libcell2fire.a...\"\n\"${SRCROOT}/../scripts/build_libcell2fire.sh\" \"${SRCROOT}/../../Cell2Fire\" \"${BUILD_DIR}\"\n";
+			shellScript = "set -euo pipefail\n/bin/bash \"${SRCROOT}/../scripts/build_macos_engine.sh\" \"${SRCROOT}/../../Cell2Fire\" \"${SRCROOT}/../build\"\n";
+		};
+		AA0C2F01B001C2F300000002 /* Embed portable runtime */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Embed portable runtime";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -euo pipefail\n/usr/bin/python3 \"${SRCROOT}/../scripts/embed_macos_runtime.py\" \"${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}\" \"${SRCROOT}/../build/bin/Cell2Fire\" \"${SRCROOT}/../../Cell2Fire\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -437,9 +453,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../build/lib",
-					/opt/homebrew/lib,
-					/opt/homebrew/opt/libomp/lib,
-					/opt/homebrew/opt/libtiff/lib,
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (
@@ -490,9 +503,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../build/lib",
-					/opt/homebrew/lib,
-					/opt/homebrew/opt/libomp/lib,
-					/opt/homebrew/opt/libtiff/lib,
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = (

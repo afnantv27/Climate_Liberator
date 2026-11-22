@@ -34,7 +34,7 @@ struct IndiaSiteLookupView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Current Site")
-                    .font(.subheadline.bold())
+                    .font(.subheadline.weight(.semibold))
                 Text(String(format: "Lat %.5f, Lon %.5f", currentCoordinate.latitude, currentCoordinate.longitude))
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -61,7 +61,7 @@ struct IndiaSiteLookupView: View {
                 if riskSnapshot.assessedCount > 0 {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Site Risk Snapshot")
-                            .font(.subheadline.bold())
+                            .font(.subheadline.weight(.semibold))
 
                         HStack {
                             infoMetric(title: "Risk Assessed", value: "\(riskSnapshot.assessedCount)")
@@ -83,7 +83,7 @@ struct IndiaSiteLookupView: View {
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Nearby Buildings")
-                        .font(.subheadline.bold())
+                        .font(.subheadline.weight(.semibold))
                     ForEach(store.nearbyBuildings.prefix(8)) { building in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {

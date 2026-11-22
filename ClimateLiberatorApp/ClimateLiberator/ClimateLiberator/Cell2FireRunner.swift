@@ -36,7 +36,9 @@ final class Cell2FireRunner {
              completion: @escaping (Result<Cell2FireResult, Error>) -> Void) {
 
         let binaryURL = URL(fileURLWithPath: binaryPath)
-        let workDir = binaryURL.deletingLastPathComponent()
+        let workDir = binaryURL.standardizedFileURL == AppDataLocations.bundledEngineURL.standardizedFileURL
+            ? Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/Engine")
+            : binaryURL.deletingLastPathComponent()
 
         guard FileManager.default.isExecutableFile(atPath: binaryURL.path) else {
             completion(.failure(RunnerError(message: "Cell2Fire binary missing or not executable at \(binaryURL.path)")))

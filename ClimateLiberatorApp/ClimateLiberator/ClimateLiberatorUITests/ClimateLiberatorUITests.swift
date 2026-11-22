@@ -23,18 +23,22 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testDashboardShowsPrimaryWorkflows() throws {
+    func testHomeShowsModules() throws {
         let app = configuredApp()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Dashboard"].firstMatch.waitForExistence(timeout: 5))
+        let home = app.radioButtons["Home"].firstMatch
+        XCTAssertTrue(home.waitForExistence(timeout: 5))
+        XCTAssertEqual((home.value as? NSNumber)?.intValue, 1)
         XCTAssertTrue(app.buttons["Open Climate Simulation"].firstMatch.exists)
         XCTAssertTrue(app.buttons["Open Forecast Intelligence"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["Open TCFD Dashboard"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Disclosure"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Clients"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Reduce"].firstMatch.exists)
     }
 
     @MainActor
-    func testForecastWindowOpensFromDashboard() throws {
+    func testForecastWindowOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 
@@ -47,12 +51,16 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testClimateSimulationOpensFromDashboard() throws {
+    func testClimateSimulationOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 
         let simulationButton = app.buttons["Open Climate Simulation"].firstMatch
         XCTAssertTrue(simulationButton.waitForExistence(timeout: 5))
+        for _ in 0..<4 where !simulationButton.isHittable {
+            app.scrollViews["home.scroll"].firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+        }
+        XCTAssertTrue(simulationButton.isHittable)
         simulationButton.click()
 
         XCTAssertTrue(waitForAnyElement(in: app, identifiers: [
@@ -63,18 +71,17 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testTCFDDashboardOpensFromDashboard() throws {
+    func testDisclosureOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 
-        let tcfdButton = app.buttons["Open TCFD Dashboard"].firstMatch
-        XCTAssertTrue(tcfdButton.waitForExistence(timeout: 5))
-        tcfdButton.click()
+        let disclosureButton = app.buttons["Open Disclosure"].firstMatch
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.click()
 
         XCTAssertTrue(waitForAnyElement(in: app, identifiers: [
-            "TCFD Dashboard",
-            "Board Disclosure Workspace",
-            "TCFD Wildfire Dashboard"
+            "BRSR, BRSR Core and IFRS S2 reporting for client companies.",
+            "New Client"
         ], timeout: 5))
     }
 

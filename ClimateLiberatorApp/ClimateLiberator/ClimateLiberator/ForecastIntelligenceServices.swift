@@ -27,12 +27,12 @@ protocol ForecastLiveDataClient {
                                horizon: ForecastHorizon) async throws -> OpenMeteoSeasonalResponse
 }
 
-protocol ForecastEvidenceSnapshotStore {
-    func saveSnapshot(_ snapshot: ForecastEvidenceSnapshot) throws
-    func loadSnapshots() -> [ForecastEvidenceSnapshot]
+protocol ForecastEvidenceSnapshotStore: Sendable {
+    nonisolated func saveSnapshot(_ snapshot: ForecastEvidenceSnapshot) throws
+    nonisolated func loadSnapshots() -> [ForecastEvidenceSnapshot]
 }
 
-struct ForecastSnapshotContext {
+struct ForecastSnapshotContext: Sendable {
     let providerID: String
     let providerLabel: String
     let sourceMode: ForecastSourceMode
@@ -48,15 +48,15 @@ struct ForecastSnapshotContext {
     let airQualityCards: [ForecastMetricCard]
 }
 
-struct ForecastSnapshotCollections {
+struct ForecastSnapshotCollections: Sendable {
     let executiveEligibleSnapshots: [ForecastEvidenceSnapshot]
     let disclosureEligibleSnapshots: [ForecastEvidenceSnapshot]
 }
 
-protocol ForecastEvidencePromotionManaging {
-    func persistOperationalSnapshot(from context: ForecastSnapshotContext) throws -> ForecastSnapshotCollections
-    func promoteSnapshot(from context: ForecastSnapshotContext, to level: ForecastPromotionLevel) throws -> ForecastSnapshotCollections
-    func loadSnapshotCollections() -> ForecastSnapshotCollections
+protocol ForecastEvidencePromotionManaging: Sendable {
+    nonisolated func persistOperationalSnapshot(from context: ForecastSnapshotContext) throws -> ForecastSnapshotCollections
+    nonisolated func promoteSnapshot(from context: ForecastSnapshotContext, to level: ForecastPromotionLevel) throws -> ForecastSnapshotCollections
+    nonisolated func loadSnapshotCollections() -> ForecastSnapshotCollections
 }
 
 protocol ForecastMetricCardBuilding {
@@ -66,62 +66,84 @@ protocol ForecastMetricCardBuilding {
 }
 
 struct BuildForecastFeedRepository: ForecastFeedRepository {
-    private let processedFeedsDirectory: URL
-    private let manifestsDirectory: URL
+    private let feedCache: ForecastJSONDirectoryCache<ProcessedForecastFeed>
+    private let supportCache: ForecastJSONDirectoryCache<SupportManifest>
+    private let maximumDistanceInKilometers: Double
+    private let now: () -> Date
 
-    init(processedFeedsDirectory: URL = URL(fileURLWithPath: "/Users/afnan/Desktop/Build/environment-risk-data/data/processed", isDirectory: true),
-         manifestsDirectory: URL = URL(fileURLWithPath: "/Users/afnan/Desktop/Build/environment-risk-data/data/processed/manifests", isDirectory: true)) {
-        self.processedFeedsDirectory = processedFeedsDirectory
-        self.manifestsDirectory = manifestsDirectory
+    init(processedFeedsDirectory: URL = AppDataLocations.forecastProcessedDirectory,
+         manifestsDirectory: URL = AppDataLocations.forecastManifestsDirectory,
+         maximumDistanceInKilometers: Double = 25,
+         now: @escaping () -> Date = Date.init,
+         readData: @escaping (URL) throws -> Data = { try Data(contentsOf: $0) }) {
+        self.maximumDistanceInKilometers = maximumDistanceInKilometers
+        self.now = now
+        self.feedCache = ForecastJSONDirectoryCache(directory: processedFeedsDirectory, now: now, readData: readData) { _, data in
+            try Self.decoder().decode(ProcessedForecastFeed.self, from: data)
+        }
+        self.supportCache = ForecastJSONDirectoryCache(
+            directory: manifestsDirectory,
+            fileNames: ["forecast_overview.json", "forecast_provider_trust.json", "forecast_warning_summary.json"],
+            now: now,
+            readData: readData
+        ) { url, data in
+            let decoder = Self.decoder()
+            switch url.lastPathComponent {
+            case "forecast_overview.json": return .overview(try decoder.decode(ForecastOverviewSummary.self, from: data))
+            case "forecast_provider_trust.json": return .providerTrust(try decoder.decode(ForecastProviderTrustFeed.self, from: data))
+            default: return .warnings(try decoder.decode(ForecastWarningSummary.self, from: data))
+            }
+        }
     }
 
     func loadProcessedFeed(near coordinate: CLLocationCoordinate2D, horizon: ForecastHorizon) -> ProcessedForecastFeed? {
-        guard FileManager.default.fileExists(atPath: processedFeedsDirectory.path) else {
-            return nil
+        guard CLLocationCoordinate2DIsValid(coordinate), maximumDistanceInKilometers.isFinite,
+              maximumDistanceInKilometers >= 0 else { return nil }
+        let timestamp = now()
+        let candidates = feedCache.load().filter {
+            $0.forecastHorizon == horizon.rawValue && !$0.isSynthetic &&
+                CLLocationCoordinate2DIsValid($0.coordinate) &&
+                ($0.generatedAt ?? .distantFuture) <= timestamp &&
+                ($0.validFrom ?? .distantFuture) <= timestamp && ($0.validTo ?? .distantPast) >= timestamp &&
+                (!$0.weatherMetrics.isEmpty || !$0.airQualityMetrics.isEmpty)
         }
-
-        let urls = (try? FileManager.default.contentsOfDirectory(at: processedFeedsDirectory,
-                                                                 includingPropertiesForKeys: nil,
-                                                                 options: [.skipsHiddenFiles])) ?? []
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        let feeds = urls
-            .filter { $0.pathExtension.lowercased() == "json" }
-            .compactMap { try? Data(contentsOf: $0) }
-            .compactMap { try? decoder.decode(ProcessedForecastFeed.self, from: $0) }
-            .filter { $0.forecastHorizon == horizon.rawValue }
-
-        guard !feeds.isEmpty else {
-            return nil
-        }
-
-        let sorted = feeds.sorted {
-            distanceInKilometers(from: coordinate, to: $0.coordinate) < distanceInKilometers(from: coordinate, to: $1.coordinate)
-        }
-
-        guard let nearest = sorted.first else {
-            return nil
-        }
-
-        return distanceInKilometers(from: coordinate, to: nearest.coordinate) <= 250 ? nearest : nil
+        // Point feeds do not imply national coverage. Keep proximity conservative and deterministic.
+        return candidates.compactMap { feed -> (feed: ProcessedForecastFeed, distance: Double)? in
+            let distance = distanceInKilometers(from: coordinate, to: feed.coordinate)
+            return distance <= maximumDistanceInKilometers ? (feed, distance) : nil
+        }.min {
+            if abs($0.distance - $1.distance) > 0.001 { return $0.distance < $1.distance }
+            if $0.feed.generatedAt != $1.feed.generatedAt {
+                return ($0.feed.generatedAt ?? .distantPast) > ($1.feed.generatedAt ?? .distantPast)
+            }
+            return $0.feed.snapshotID < $1.feed.snapshotID
+        }?.feed
     }
 
     func loadBuildSupportFeeds() -> ForecastBuildSupportFeeds {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        return ForecastBuildSupportFeeds(
-            overview: decodeManifest("forecast_overview.json", decoder: decoder),
-            providerTrust: decodeManifest("forecast_provider_trust.json", decoder: decoder),
-            warningSummary: decodeManifest("forecast_warning_summary.json", decoder: decoder)
-        )
+        var overview: ForecastOverviewSummary?
+        var providerTrust: ForecastProviderTrustFeed?
+        var warningSummary: ForecastWarningSummary?
+        for manifest in supportCache.load() {
+            switch manifest {
+            case .overview(let value): overview = value
+            case .providerTrust(let value): providerTrust = value
+            case .warnings(let value): warningSummary = value
+            }
+        }
+        return ForecastBuildSupportFeeds(overview: overview, providerTrust: providerTrust, warningSummary: warningSummary)
     }
 
-    private func decodeManifest<T: Decodable>(_ fileName: String, decoder: JSONDecoder) -> T? {
-        let url = manifestsDirectory.appendingPathComponent(fileName)
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? decoder.decode(T.self, from: data)
+    private enum SupportManifest {
+        case overview(ForecastOverviewSummary)
+        case providerTrust(ForecastProviderTrustFeed)
+        case warnings(ForecastWarningSummary)
+    }
+
+    private static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 
     private func distanceInKilometers(from lhs: CLLocationCoordinate2D,
@@ -129,6 +151,109 @@ struct BuildForecastFeedRepository: ForecastFeedRepository {
         let left = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
         let right = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
         return left.distance(from: right) / 1000
+    }
+}
+
+// Synchronous protocol callers share a bounded cache instead of rereading the directory on every view update.
+// Directory replacements are noticed immediately; in-place edits are revalidated within two seconds.
+final class ForecastJSONDirectoryCache<Value> {
+    private let lock = NSRecursiveLock()
+    private struct Version: Equatable {
+        let modified: Date?
+        let created: Date?
+        let size: UInt64
+        let inode: UInt64
+    }
+
+    private struct Entry {
+        let version: Version
+        let value: Value?
+    }
+
+    private let directory: URL
+    private let fileNames: Set<String>?
+    private let now: () -> Date
+    private let readData: (URL) throws -> Data
+    private let decode: (URL, Data) throws -> Value
+    private let maximumFiles: Int
+    private let maximumBytes: Int
+    private let maximumFileBytes: Int
+    private var directoryVersion: Version?
+    private var checkedAt: Date?
+    private var entries: [URL: Entry] = [:]
+    private var values: [Value] = []
+
+    init(directory: URL, fileNames: Set<String>? = nil,
+         maximumFiles: Int = 512, maximumBytes: Int = 16 * 1_024 * 1_024,
+         maximumFileBytes: Int = 1_024 * 1_024,
+         now: @escaping () -> Date = Date.init,
+         readData: @escaping (URL) throws -> Data = { try Data(contentsOf: $0) },
+         decode: @escaping (URL, Data) throws -> Value) {
+        self.directory = directory
+        self.fileNames = fileNames
+        self.maximumFiles = max(0, maximumFiles)
+        self.maximumBytes = max(0, maximumBytes)
+        self.maximumFileBytes = max(0, maximumFileBytes)
+        self.now = now
+        self.readData = readData
+        self.decode = decode
+    }
+
+    func invalidate() {
+        lock.lock()
+        defer { lock.unlock() }
+        checkedAt = nil
+    }
+
+    func load() -> [Value] {
+        lock.lock()
+        defer { lock.unlock() }
+        let timestamp = now()
+        let version = fileVersion(directory)
+        if let checkedAt, version == directoryVersion,
+           timestamp.timeIntervalSince(checkedAt) >= 0, timestamp.timeIntervalSince(checkedAt) < 2 {
+            return values
+        }
+        directoryVersion = version
+        checkedAt = timestamp
+        let urls = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil,
+                                                                options: [.skipsHiddenFiles])) ?? []
+        var updated: [URL: Entry] = [:]
+        var loaded: [Value] = []
+        var byteCount = 0
+        for url in urls.filter({ $0.pathExtension.lowercased() == "json" && (fileNames?.contains($0.lastPathComponent) ?? true) })
+            .sorted(by: { $0.lastPathComponent < $1.lastPathComponent }).prefix(maximumFiles) {
+            guard let version = fileVersion(url, requireRegularFile: true),
+                  version.size <= UInt64(maximumFileBytes), version.size <= UInt64(maximumBytes - byteCount) else { continue }
+            byteCount += Int(version.size)
+            let entry: Entry
+            if let existing = entries[url], existing.version == version {
+                entry = existing
+            } else {
+                let value: Value?
+                if let data = try? readData(url), data.count <= maximumFileBytes,
+                   data.count == Int(version.size), fileVersion(url, requireRegularFile: true) == version {
+                    value = try? decode(url, data)
+                } else {
+                    value = nil
+                }
+                entry = Entry(version: version, value: value)
+            }
+            updated[url] = entry
+            if let value = entry.value { loaded.append(value) }
+        }
+        entries = updated
+        values = loaded
+        return loaded
+    }
+
+    private func fileVersion(_ url: URL, requireRegularFile: Bool = false) -> Version? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              !requireRegularFile || attributes[.type] as? FileAttributeType == .typeRegular else { return nil }
+        return Version(modified: attributes[.modificationDate] as? Date,
+                       created: attributes[.creationDate] as? Date,
+                       size: (attributes[.size] as? NSNumber)?.uint64Value ?? 0,
+                       inode: (attributes[.systemFileNumber] as? NSNumber)?.uint64Value ?? 0)
     }
 }
 
@@ -223,7 +348,7 @@ struct FileSystemForecastEvidenceSnapshotStore: ForecastEvidenceSnapshotStore {
         self.forecastEvidenceDirectory = forecastEvidenceDirectory
     }
 
-    func saveSnapshot(_ snapshot: ForecastEvidenceSnapshot) throws {
+    nonisolated func saveSnapshot(_ snapshot: ForecastEvidenceSnapshot) throws {
         try FileManager.default.createDirectory(at: forecastEvidenceDirectory, withIntermediateDirectories: true)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -232,7 +357,7 @@ struct FileSystemForecastEvidenceSnapshotStore: ForecastEvidenceSnapshotStore {
         try encoder.encode(snapshot).write(to: url, options: .atomic)
     }
 
-    func loadSnapshots() -> [ForecastEvidenceSnapshot] {
+    nonisolated func loadSnapshots() -> [ForecastEvidenceSnapshot] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let urls = (try? FileManager.default.contentsOfDirectory(at: forecastEvidenceDirectory,
@@ -253,7 +378,7 @@ struct ForecastEvidencePromotionManager: ForecastEvidencePromotionManaging {
         self.snapshotStore = snapshotStore
     }
 
-    func persistOperationalSnapshot(from context: ForecastSnapshotContext) throws -> ForecastSnapshotCollections {
+    nonisolated func persistOperationalSnapshot(from context: ForecastSnapshotContext) throws -> ForecastSnapshotCollections {
         guard let snapshot = buildSnapshot(from: context, promotionLevel: .operationsOnly) else {
             return loadSnapshotCollections()
         }
@@ -261,7 +386,7 @@ struct ForecastEvidencePromotionManager: ForecastEvidencePromotionManaging {
         return loadSnapshotCollections()
     }
 
-    func promoteSnapshot(from context: ForecastSnapshotContext, to level: ForecastPromotionLevel) throws -> ForecastSnapshotCollections {
+    nonisolated func promoteSnapshot(from context: ForecastSnapshotContext, to level: ForecastPromotionLevel) throws -> ForecastSnapshotCollections {
         guard let snapshot = buildSnapshot(from: context, promotionLevel: level) else {
             return loadSnapshotCollections()
         }
@@ -269,7 +394,7 @@ struct ForecastEvidencePromotionManager: ForecastEvidencePromotionManaging {
         return loadSnapshotCollections()
     }
 
-    func loadSnapshotCollections() -> ForecastSnapshotCollections {
+    nonisolated func loadSnapshotCollections() -> ForecastSnapshotCollections {
         let snapshots = snapshotStore.loadSnapshots()
         return ForecastSnapshotCollections(
             executiveEligibleSnapshots: snapshots.filter { $0.promotionLevel == .executiveEligible || $0.promotionLevel == .disclosureEligible },
@@ -277,7 +402,7 @@ struct ForecastEvidencePromotionManager: ForecastEvidencePromotionManaging {
         )
     }
 
-    private func buildSnapshot(from context: ForecastSnapshotContext,
+    nonisolated private func buildSnapshot(from context: ForecastSnapshotContext,
                                promotionLevel: ForecastPromotionLevel) -> ForecastEvidenceSnapshot? {
         guard !context.weatherCards.isEmpty || !context.airQualityCards.isEmpty else { return nil }
         return ForecastEvidenceSnapshot(
@@ -307,7 +432,7 @@ struct ForecastEvidencePromotionManager: ForecastEvidencePromotionManaging {
         )
     }
 
-    private func snapshotIdentifier(locationLabel: String,
+    nonisolated private func snapshotIdentifier(locationLabel: String,
                                     horizon: ForecastHorizon,
                                     suffix: String) -> String {
         let location = locationLabel

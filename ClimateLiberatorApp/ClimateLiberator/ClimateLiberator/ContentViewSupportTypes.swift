@@ -197,46 +197,6 @@ enum EarthEngineTarget: String, CaseIterable, Identifiable {
     }
 }
 
-enum AppWorkspace: String, CaseIterable, Identifiable {
-    case dashboard
-    case commandCenter
-    case intelligence
-    case operations
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .dashboard: return "Dashboard"
-        case .commandCenter: return "Executive Overview"
-        case .intelligence: return "Portfolio Intelligence"
-        case .operations: return "Simulation Workspace"
-        }
-    }
-
-    var shortTitle: String {
-        switch self {
-        case .dashboard: return "Dashboard"
-        case .commandCenter: return "Overview"
-        case .intelligence: return "Portfolio"
-        case .operations: return "Simulation"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .dashboard:
-            return "Launch the core Climate Liberator workspaces from one place."
-        case .commandCenter:
-            return "Management status, disclosure readiness, and next actions."
-        case .intelligence:
-            return "India screening, demo workflow, and portfolio concentration analysis."
-        case .operations:
-            return "Map-based modelling, inputs, and run execution."
-        }
-    }
-}
-
 enum BinaryResolution {
     case resolved(String)
     case needsPath

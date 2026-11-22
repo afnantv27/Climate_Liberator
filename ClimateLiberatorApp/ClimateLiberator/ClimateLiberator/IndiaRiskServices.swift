@@ -46,6 +46,7 @@ struct IndiaPortfolioRollupSnapshot: Codable, Hashable {
     let topRiskConcentrations: [IndiaRiskConcentration]
     let hierarchySummaries: [IndiaPortfolioHierarchySummary]
     let statusMessage: String
+    var databaseRevision: IndiaDatabaseRevision? = nil
 }
 
 enum IndiaRiskStoreError: LocalizedError {
@@ -97,6 +98,81 @@ protocol IndiaPortfolioRollupCaching {
 protocol IndiaPortfolioRollupServicing {
     func loadPortfolioRollupSnapshot(at path: String) -> IndiaPortfolioRollupSnapshot
     func invalidateCache(for path: String)
+}
+
+// Include sidecars: in WAL mode a committed edit need not touch the database file.
+struct IndiaDatabaseRevision: Codable, Hashable {
+    struct FileRevision: Codable, Hashable {
+        let modifiedAt: Date
+        let size: UInt64
+        let fileNumber: UInt64
+    }
+
+    let database: FileRevision
+    let wal: FileRevision?
+    let journal: FileRevision?
+
+    static func read(at path: String) -> IndiaDatabaseRevision? {
+        let resolvedPath = NSString(string: path).expandingTildeInPath
+        func fileRevision(_ path: String) -> FileRevision? {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+                  attributes[.type] as? FileAttributeType == .typeRegular,
+                  let modifiedAt = attributes[.modificationDate] as? Date,
+                  let size = attributes[.size] as? NSNumber,
+                  let fileNumber = attributes[.systemFileNumber] as? NSNumber else { return nil }
+            return FileRevision(modifiedAt: modifiedAt, size: size.uint64Value, fileNumber: fileNumber.uint64Value)
+        }
+        guard let database = fileRevision(resolvedPath) else { return nil }
+        return IndiaDatabaseRevision(database: database,
+                                     wal: fileRevision(resolvedPath + "-wal"),
+                                     journal: fileRevision(resolvedPath + "-journal"))
+    }
+}
+
+struct IndiaNearbySearchBounds {
+    let minimumLatitude: Double
+    let maximumLatitude: Double
+    let minimumLongitude: Double
+    let maximumLongitude: Double
+
+    init?(latitude: Double, longitude: Double, radiusMeters: Double) {
+        guard latitude.isFinite, longitude.isFinite, radiusMeters.isFinite,
+              (-90...90).contains(latitude), (-180...180).contains(longitude), radiusMeters >= 0 else { return nil }
+        let angularRadius = min(radiusMeters / 6_371_000, .pi)
+        let latitudeRadians = latitude * .pi / 180
+        let latitudeDelta = angularRadius * 180 / .pi
+        minimumLatitude = max(-90, latitude - latitudeDelta)
+        maximumLatitude = min(90, latitude + latitudeDelta)
+        if minimumLatitude <= -90 || maximumLatitude >= 90 {
+            minimumLongitude = -180
+            maximumLongitude = 180
+        } else {
+            let longitudeDelta = asin(min(1, sin(angularRadius) / cos(latitudeRadians))) * 180 / .pi
+            let west = longitude - longitudeDelta
+            let east = longitude + longitudeDelta
+            minimumLongitude = west < -180 ? west + 360 : west
+            maximumLongitude = east > 180 ? east - 360 : east
+        }
+    }
+
+    var longitudePredicate: String {
+        minimumLongitude <= maximumLongitude
+            ? "b.longitude BETWEEN ? AND ?"
+            : "(b.longitude >= ? OR b.longitude <= ?)"
+    }
+
+    func bind(to statement: OpaquePointer?) {
+        sqlite3_bind_double(statement, 1, minimumLatitude)
+        sqlite3_bind_double(statement, 2, maximumLatitude)
+        sqlite3_bind_double(statement, 3, minimumLongitude)
+        sqlite3_bind_double(statement, 4, maximumLongitude)
+    }
+}
+
+private func indiaDataStatus(_ message: String, path: String) -> String {
+    URL(fileURLWithPath: path).lastPathComponent == "india_demo.db"
+        ? "Synthetic India starter data (not national coverage). \(message)"
+        : message
 }
 
 struct FileIndiaDemoFeedService: IndiaDemoFeedProviding {
@@ -183,7 +259,7 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
             buildingCount: buildingCount,
             portfolioSummary: .empty,
             topRiskConcentrations: [],
-            statusMessage: statusMessage
+            statusMessage: indiaDataStatus(statusMessage, path: path)
         )
     }
 
@@ -191,6 +267,13 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
                              latitude: Double,
                              longitude: Double,
                              radiusMeters: Double) -> IndiaNearbyLookupSnapshot {
+        guard let bounds = IndiaNearbySearchBounds(latitude: latitude, longitude: longitude, radiusMeters: radiusMeters) else {
+            return IndiaNearbyLookupSnapshot(
+                buildings: [],
+                summary: IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0),
+                statusMessage: "Enter valid coordinates and a finite, nonnegative search radius."
+            )
+        }
         guard let db = IndiaSQLiteSupport.openDatabase(at: path, writable: false) else {
             return IndiaNearbyLookupSnapshot(
                 buildings: [],
@@ -199,10 +282,6 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
             )
         }
         defer { sqlite3_close(db) }
-
-        let latDelta = radiusMeters / 111_320.0
-        let lonScale = max(cos(latitude * .pi / 180.0), 0.1)
-        let lonDelta = radiusMeters / (111_320.0 * lonScale)
 
         let sql = """
         SELECT
@@ -214,25 +293,10 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
             b.area_m2,
             b.total_built_up_m2,
             b.building_floor_count,
-            b.landuse,
-            (
-                SELECT ra.risk_band
-                FROM risk_assessments ra
-                WHERE ra.building_id = b.building_id
-                ORDER BY ra.created_at DESC
-                LIMIT 1
-            ) AS risk_band,
-            (
-                SELECT ra.scenario_label
-                FROM risk_assessments ra
-                WHERE ra.building_id = b.building_id
-                ORDER BY ra.created_at DESC
-                LIMIT 1
-            ) AS scenario_label
+            b.landuse
         FROM building_stock b
         WHERE b.latitude BETWEEN ? AND ?
-          AND b.longitude BETWEEN ? AND ?
-        LIMIT 250;
+          AND \(bounds.longitudePredicate);
         """
 
         var statement: OpaquePointer?
@@ -245,13 +309,12 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
         }
         defer { sqlite3_finalize(statement) }
 
-        sqlite3_bind_double(statement, 1, latitude - latDelta)
-        sqlite3_bind_double(statement, 2, latitude + latDelta)
-        sqlite3_bind_double(statement, 3, longitude - lonDelta)
-        sqlite3_bind_double(statement, 4, longitude + lonDelta)
+        bounds.bind(to: statement)
 
         var results: [IndiaNearbyBuilding] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
+        var step = sqlite3_step(statement)
+        while step == SQLITE_ROW {
+            defer { step = sqlite3_step(statement) }
             let buildingLatitude = sqlite3_column_double(statement, 3)
             let buildingLongitude = sqlite3_column_double(statement, 4)
             let distance = IndiaSQLiteSupport.haversineDistanceMeters(
@@ -262,8 +325,7 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
             )
             guard distance <= radiusMeters else { continue }
 
-            results.append(
-                IndiaNearbyBuilding(
+            let building = IndiaNearbyBuilding(
                     id: IndiaSQLiteSupport.stringColumn(statement, index: 0),
                     districtName: IndiaSQLiteSupport.stringColumn(statement, index: 1),
                     stateCode: IndiaSQLiteSupport.stringColumn(statement, index: 2),
@@ -274,24 +336,62 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
                     floorCount: IndiaSQLiteSupport.nullableInt(statement, index: 7),
                     landuse: IndiaSQLiteSupport.nullableString(statement, index: 8),
                     distanceMeters: distance,
-                    riskBand: IndiaSQLiteSupport.nullableString(statement, index: 9),
-                    scenarioLabel: IndiaSQLiteSupport.nullableString(statement, index: 10)
+                    riskBand: nil,
+                    scenarioLabel: nil
                 )
+            // Stream the bounding box, retaining only the nearest 25, not an arbitrary SQL prefix.
+            let index = results.firstIndex {
+                distance < $0.distanceMeters || (distance == $0.distanceMeters && building.id < $0.id)
+            } ?? results.endIndex
+            if index < 25 {
+                results.insert(building, at: index)
+                if results.count > 25 { results.removeLast() }
+            }
+        }
+        guard step == SQLITE_DONE else {
+            return IndiaNearbyLookupSnapshot(
+                buildings: [],
+                summary: IndiaBuildingLookupSummary(buildingCount: 0, totalFootprintM2: 0, totalBuiltUpM2: 0),
+                statusMessage: "Could not finish querying nearby buildings from the India database."
             )
         }
-
-        results.sort { $0.distanceMeters < $1.distanceMeters }
-        let buildings = Array(results.prefix(25))
+        let buildings = loadLatestWildfireAssessments(for: results, in: db)
         let summary = IndiaBuildingLookupSummary(
             buildingCount: buildings.count,
             totalFootprintM2: buildings.compactMap(\.areaM2).reduce(0, +),
             totalBuiltUpM2: buildings.compactMap(\.builtUpM2).reduce(0, +)
         )
         let statusMessage = buildings.isEmpty
-            ? "No imported buildings were found within \(Int(radiusMeters)) m of the selected site."
-            : "Found \(buildings.count) nearby buildings within \(Int(radiusMeters)) m of the selected site."
+            ? "No imported buildings were found within \(String(format: "%.0f", radiusMeters)) m of the selected site."
+            : "Found \(buildings.count) nearby buildings within \(String(format: "%.0f", radiusMeters)) m of the selected site."
 
-        return IndiaNearbyLookupSnapshot(buildings: buildings, summary: summary, statusMessage: statusMessage)
+        return IndiaNearbyLookupSnapshot(buildings: buildings, summary: summary,
+                                         statusMessage: indiaDataStatus(statusMessage, path: path))
+    }
+
+    private func loadLatestWildfireAssessments(for buildings: [IndiaNearbyBuilding], in db: OpaquePointer?) -> [IndiaNearbyBuilding] {
+        let sql = """
+        SELECT risk_band, scenario_label FROM risk_assessments
+        WHERE building_id = ? AND hazard_type = 'wildfire'
+        ORDER BY created_at DESC, assessment_id DESC LIMIT 1;
+        """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return buildings }
+        defer { sqlite3_finalize(statement) }
+        return buildings.map { building in
+            sqlite3_reset(statement)
+            sqlite3_clear_bindings(statement)
+            IndiaSQLiteSupport.bindText(statement, index: 1, value: building.id)
+            guard sqlite3_step(statement) == SQLITE_ROW else { return building }
+            return IndiaNearbyBuilding(
+                id: building.id, districtName: building.districtName, stateCode: building.stateCode,
+                latitude: building.latitude, longitude: building.longitude, areaM2: building.areaM2,
+                builtUpM2: building.builtUpM2, floorCount: building.floorCount, landuse: building.landuse,
+                distanceMeters: building.distanceMeters,
+                riskBand: IndiaSQLiteSupport.nullableString(statement, index: 0),
+                scenarioLabel: IndiaSQLiteSupport.nullableString(statement, index: 1)
+            )
+        }
     }
 
     func persistWildfireAssessments(databasePath: String,
@@ -618,37 +718,41 @@ struct SQLiteIndiaRiskRepository: IndiaRiskRepository {
 
 final class FileIndiaPortfolioRollupCacheStore: IndiaPortfolioRollupCaching {
     private struct CacheEnvelope: Codable {
+        let version: Int
         var entries: [String: CacheEntry]
     }
 
     private struct CacheEntry: Codable {
         let databaseModifiedAt: Date?
+        let revision: IndiaDatabaseRevision
         let snapshot: IndiaPortfolioRollupSnapshot
     }
 
     private let queue = DispatchQueue(label: "com.climateliberator.india-rollup-cache", qos: .utility)
     private let cacheURL: URL
+    private let maximumEntries: Int
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private var inMemoryEntries: [String: CacheEntry] = [:]
     private var isLoaded = false
 
-    init(cacheURL: URL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Documents/ClimateLiberator/_climateliberator/india/rollup-cache.json", isDirectory: false)) {
+    init(cacheURL: URL = AppDataLocations.applicationSupportDirectory
+        .appendingPathComponent("Caches/India/rollup-cache.json", isDirectory: false), maximumEntries: Int = 16) {
         self.cacheURL = cacheURL
+        self.maximumEntries = max(1, maximumEntries)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
         self.encoder = encoder
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
         self.decoder = decoder
     }
 
     func cachedRollupSnapshot(for path: String, modifiedAt: Date?) -> IndiaPortfolioRollupSnapshot? {
         queue.sync {
             loadIfNeeded()
-            guard let entry = inMemoryEntries[path], entry.databaseModifiedAt == modifiedAt else {
+            guard let entry = inMemoryEntries[path], entry.databaseModifiedAt == modifiedAt,
+                  entry.revision == IndiaDatabaseRevision.read(at: path) else {
+                inMemoryEntries.removeValue(forKey: path)
                 return nil
             }
             return entry.snapshot
@@ -658,10 +762,14 @@ final class FileIndiaPortfolioRollupCacheStore: IndiaPortfolioRollupCaching {
     func storeRollupSnapshot(_ snapshot: IndiaPortfolioRollupSnapshot) {
         queue.sync {
             loadIfNeeded()
+            guard let revision = IndiaDatabaseRevision.read(at: snapshot.databasePath),
+                  revision == snapshot.databaseRevision else { return }
             inMemoryEntries[snapshot.databasePath] = CacheEntry(
                 databaseModifiedAt: snapshot.databaseModifiedAt,
+                revision: revision,
                 snapshot: snapshot
             )
+            trimEntries()
             persist()
         }
     }
@@ -677,18 +785,28 @@ final class FileIndiaPortfolioRollupCacheStore: IndiaPortfolioRollupCaching {
     private func loadIfNeeded() {
         guard !isLoaded else { return }
         isLoaded = true
-        guard let data = try? Data(contentsOf: cacheURL),
-              let envelope = try? decoder.decode(CacheEnvelope.self, from: data) else {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: cacheURL.path),
+              let size = attributes[.size] as? NSNumber, size.uint64Value <= 8 * 1_024 * 1_024,
+              let data = try? Data(contentsOf: cacheURL),
+              let envelope = try? decoder.decode(CacheEnvelope.self, from: data), envelope.version == 2 else {
             return
         }
         inMemoryEntries = envelope.entries
+        trimEntries()
+    }
+
+    private func trimEntries() {
+        while inMemoryEntries.count > maximumEntries,
+              let oldest = inMemoryEntries.min(by: { $0.value.snapshot.generatedAt < $1.value.snapshot.generatedAt })?.key {
+            inMemoryEntries.removeValue(forKey: oldest)
+        }
     }
 
     private func persist() {
         do {
             let directory = cacheURL.deletingLastPathComponent()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let envelope = CacheEnvelope(entries: inMemoryEntries)
+            let envelope = CacheEnvelope(version: 2, entries: inMemoryEntries)
             let data = try encoder.encode(envelope)
             try data.write(to: cacheURL, options: .atomic)
         } catch {
@@ -723,10 +841,35 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
                 portfolioSummary: .empty,
                 topRiskConcentrations: [],
                 hierarchySummaries: [],
-                statusMessage: "Database found, but the expected Climate Liberator India tables are missing."
+                statusMessage: "India schema could not be read: \(String(cString: sqlite3_errmsg(db)))"
             )
         }
 
+        // Materialize once per database revision, not once per summary. A read
+        // transaction keeps counts and all hierarchy totals on the same snapshot.
+        do {
+            try IndiaSQLiteSupport.execute(db, sql: """
+                BEGIN;
+                CREATE TEMP TABLE latest_wildfire AS
+                SELECT * FROM (
+                    SELECT ra.building_id, ra.risk_band, ra.burn_probability,
+                           ra.scenario_label, ra.created_at, b.state_code, b.district_name,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY ra.building_id
+                               ORDER BY ra.created_at DESC, ra.assessment_id DESC
+                           ) AS recency
+                    FROM risk_assessments ra
+                    JOIN building_stock b ON b.building_id = ra.building_id
+                    WHERE ra.hazard_type = 'wildfire'
+                ) WHERE recency = 1;
+                """)
+        } catch {
+            return IndiaPortfolioRollupSnapshot(
+                databasePath: path, databaseModifiedAt: modifiedAt, generatedAt: Date(),
+                buildingCount: 0, portfolioSummary: .empty, topRiskConcentrations: [],
+                hierarchySummaries: [], statusMessage: "India summary could not be read: \(error.localizedDescription)")
+        }
+        defer { sqlite3_exec(db, "ROLLBACK", nil, nil, nil) }
         let buildingCount = IndiaSQLiteSupport.scalarInt(db, sql: "SELECT COUNT(*) FROM building_stock;")
         let portfolioSummary = loadPortfolioSummary(from: db)
         let topRiskConcentrations = loadTopRiskConcentrations(from: db)
@@ -749,7 +892,7 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
             portfolioSummary: portfolioSummary,
             topRiskConcentrations: topRiskConcentrations,
             hierarchySummaries: hierarchySummaries,
-            statusMessage: statusMessage
+            statusMessage: indiaDataStatus(statusMessage, path: path)
         )
     }
 
@@ -762,8 +905,7 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
             SUM(CASE WHEN LOWER(COALESCE(risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
             COUNT(DISTINCT NULLIF(TRIM(COALESCE(scenario_label, '')), '')) AS unique_scenarios,
             MAX(created_at) AS latest_assessment_at
-        FROM risk_assessments
-        WHERE hazard_type = 'wildfire';
+        FROM latest_wildfire;
         """
 
         var statement: OpaquePointer?
@@ -786,13 +928,11 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
     private func loadTopRiskConcentrations(from db: OpaquePointer?) -> [IndiaRiskConcentration] {
         let sql = """
         SELECT
-            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
+            COALESCE(NULLIF(TRIM(COALESCE(ra.state_code, '')), ''), 'Unknown') AS state_code,
             COUNT(*) AS asset_count,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
             AVG(ra.burn_probability) AS avg_burn_probability
-        FROM risk_assessments ra
-        LEFT JOIN building_stock b ON b.building_id = ra.building_id
-        WHERE ra.hazard_type = 'wildfire'
+        FROM latest_wildfire ra
         GROUP BY state_code
         ORDER BY high_assets DESC, asset_count DESC, avg_burn_probability DESC, state_code ASC
         LIMIT 4;
@@ -824,30 +964,26 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
         let sql = """
         SELECT
             'state' AS level,
-            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
+            COALESCE(NULLIF(TRIM(COALESCE(ra.state_code, '')), ''), 'Unknown') AS state_code,
             NULL AS district_name,
             COUNT(*) AS asset_count,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
             AVG(ra.burn_probability) AS avg_burn_probability
-        FROM risk_assessments ra
-        LEFT JOIN building_stock b ON b.building_id = ra.building_id
-        WHERE ra.hazard_type = 'wildfire'
+        FROM latest_wildfire ra
         GROUP BY state_code
         UNION ALL
         SELECT
             'district' AS level,
-            COALESCE(NULLIF(TRIM(COALESCE(b.state_code, '')), ''), 'Unknown') AS state_code,
-            COALESCE(NULLIF(TRIM(COALESCE(b.district_name, '')), ''), 'Unknown') AS district_name,
+            COALESCE(NULLIF(TRIM(COALESCE(ra.state_code, '')), ''), 'Unknown') AS state_code,
+            COALESCE(NULLIF(TRIM(COALESCE(ra.district_name, '')), ''), 'Unknown') AS district_name,
             COUNT(*) AS asset_count,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'high' THEN 1 ELSE 0 END) AS high_assets,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'medium' THEN 1 ELSE 0 END) AS medium_assets,
             SUM(CASE WHEN LOWER(COALESCE(ra.risk_band, '')) = 'low' THEN 1 ELSE 0 END) AS low_assets,
             AVG(ra.burn_probability) AS avg_burn_probability
-        FROM risk_assessments ra
-        LEFT JOIN building_stock b ON b.building_id = ra.building_id
-        WHERE ra.hazard_type = 'wildfire'
+        FROM latest_wildfire ra
         GROUP BY state_code, district_name
         ORDER BY high_assets DESC, asset_count DESC, state_code ASC, district_name ASC
         LIMIT 12;
@@ -892,6 +1028,8 @@ struct SQLiteIndiaPortfolioRollupSnapshotLoader: IndiaPortfolioRollupLoading {
 final class IndiaPortfolioRollupService: IndiaPortfolioRollupServicing {
     private let loader: IndiaPortfolioRollupLoading
     private let cacheStore: IndiaPortfolioRollupCaching
+    private let lock = NSLock()
+    private var revisions: [String: IndiaDatabaseRevision] = [:]
 
     init(loader: IndiaPortfolioRollupLoading = SQLiteIndiaPortfolioRollupSnapshotLoader(),
          cacheStore: IndiaPortfolioRollupCaching = FileIndiaPortfolioRollupCacheStore()) {
@@ -900,28 +1038,41 @@ final class IndiaPortfolioRollupService: IndiaPortfolioRollupServicing {
     }
 
     func loadPortfolioRollupSnapshot(at path: String) -> IndiaPortfolioRollupSnapshot {
-        let modifiedAt = currentDatabaseModifiedAt(at: path)
-        if let cached = cacheStore.cachedRollupSnapshot(for: path, modifiedAt: modifiedAt) {
+        lock.lock()
+        defer { lock.unlock() }
+        let revision = IndiaDatabaseRevision.read(at: path)
+        let modifiedAt = revision?.database.modifiedAt
+        if revision == nil || (revisions[path] != nil && revisions[path] != revision) {
+            cacheStore.removeRollupSnapshot(for: path)
+        }
+        if revisions.count >= 16 { revisions.removeAll() }
+        revisions[path] = revision
+        if revision != nil, let cached = cacheStore.cachedRollupSnapshot(for: path, modifiedAt: modifiedAt) {
             return cached
         }
-        let snapshot = loader.loadPortfolioRollupSnapshot(at: path, modifiedAt: modifiedAt)
-        cacheStore.storeRollupSnapshot(snapshot)
+        var snapshot = loader.loadPortfolioRollupSnapshot(at: path, modifiedAt: modifiedAt)
+        if revision != nil, revision == IndiaDatabaseRevision.read(at: path) {
+            snapshot.databaseRevision = revision
+            cacheStore.storeRollupSnapshot(snapshot)
+        }
         return snapshot
     }
 
     func invalidateCache(for path: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        revisions.removeValue(forKey: path)
         cacheStore.removeRollupSnapshot(for: path)
-    }
-
-    private func currentDatabaseModifiedAt(at path: String) -> Date? {
-        guard let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.contentModificationDateKey]) else {
-            return nil
-        }
-        return values.contentModificationDate
     }
 }
 
 struct SQLiteIndiaOEDExportService: IndiaRiskExporting {
+    private let exportDirectory: URL
+
+    init(exportDirectory: URL = AppDataLocations.exportsDirectory) {
+        self.exportDirectory = exportDirectory
+    }
+
     func buildOEDExport(at path: String) -> (result: IndiaOEDExportResult?, errorMessage: String?) {
         guard let db = IndiaSQLiteSupport.openDatabase(at: path, writable: false) else {
             return (nil, "India database not available for OED export.")
@@ -994,14 +1145,15 @@ struct SQLiteIndiaOEDExportService: IndiaRiskExporting {
             return (nil, "No rows were available for OED-style export.")
         }
 
-        let exportDirectory = NSString(string: "/Users/afnan/Desktop/Build/india-risk-data/data/exports").expandingTildeInPath
         do {
-            try FileManager.default.createDirectory(atPath: exportDirectory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: exportDirectory, withIntermediateDirectories: true)
             let timestamp = ISO8601DateFormatter.compactTimestamp.string(from: Date())
-            let fileName = useSiteAssets ? "india_portfolio_sites_oed_\(timestamp).csv" : "india_building_stock_oed_\(timestamp).csv"
-            let filePath = (exportDirectory as NSString).appendingPathComponent(fileName)
+            let uniqueSuffix = "\(timestamp)_\(UUID().uuidString)"
+            let fileName = useSiteAssets ? "india_portfolio_sites_oed_\(uniqueSuffix).csv" : "india_building_stock_oed_\(uniqueSuffix).csv"
+            let filePath = exportDirectory.appendingPathComponent(fileName).path
             try rows.joined(separator: "\n").write(toFile: filePath, atomically: true, encoding: .utf8)
-            return (IndiaOEDExportResult(filePath: filePath, rowCount: rowCount, sourceLabel: useSiteAssets ? "site assets" : "building stock"), nil)
+            let sourceLabel = indiaDataStatus(useSiteAssets ? "site assets" : "building stock", path: path)
+            return (IndiaOEDExportResult(filePath: filePath, rowCount: rowCount, sourceLabel: sourceLabel), nil)
         } catch {
             return (nil, "Could not write the OED-style export file.")
         }
@@ -1023,15 +1175,15 @@ struct SQLiteIndiaOEDExportService: IndiaRiskExporting {
             (
                 SELECT ra.scenario_label
                 FROM risk_assessments ra
-                WHERE ra.site_asset_id = sa.site_asset_id
-                ORDER BY ra.created_at DESC
+                WHERE ra.site_asset_id = sa.site_asset_id AND ra.hazard_type = 'wildfire'
+                ORDER BY ra.created_at DESC, ra.assessment_id DESC
                 LIMIT 1
             ) AS scenario_label,
             (
                 SELECT ra.risk_band
                 FROM risk_assessments ra
-                WHERE ra.site_asset_id = sa.site_asset_id
-                ORDER BY ra.created_at DESC
+                WHERE ra.site_asset_id = sa.site_asset_id AND ra.hazard_type = 'wildfire'
+                ORDER BY ra.created_at DESC, ra.assessment_id DESC
                 LIMIT 1
             ) AS risk_band
         FROM site_assets sa
@@ -1055,15 +1207,15 @@ struct SQLiteIndiaOEDExportService: IndiaRiskExporting {
             (
                 SELECT ra.scenario_label
                 FROM risk_assessments ra
-                WHERE ra.building_id = b.building_id
-                ORDER BY ra.created_at DESC
+                WHERE ra.building_id = b.building_id AND ra.hazard_type = 'wildfire'
+                ORDER BY ra.created_at DESC, ra.assessment_id DESC
                 LIMIT 1
             ) AS scenario_label,
             (
                 SELECT ra.risk_band
                 FROM risk_assessments ra
-                WHERE ra.building_id = b.building_id
-                ORDER BY ra.created_at DESC
+                WHERE ra.building_id = b.building_id AND ra.hazard_type = 'wildfire'
+                ORDER BY ra.created_at DESC, ra.assessment_id DESC
                 LIMIT 1
             ) AS risk_band
         FROM building_stock b
@@ -1145,6 +1297,25 @@ private enum IndiaSQLiteSupport {
             if let db { sqlite3_close(db) }
             return nil
         }
+        sqlite3_busy_timeout(db, 2000)
+        if !writable {
+            // A newly WAL-enabled database may have no sidecars yet. SQLite needs
+            // a writable handle to initialize them, even for a SELECT-only caller.
+            var probe: OpaquePointer?
+            let code = sqlite3_prepare_v2(db, "SELECT name FROM sqlite_master LIMIT 0", -1, &probe, nil)
+            sqlite3_finalize(probe)
+            if (code == SQLITE_CANTOPEN || code == SQLITE_READONLY),
+               FileManager.default.isWritableFile(atPath: resolvedPath),
+               FileManager.default.isWritableFile(atPath: URL(fileURLWithPath: resolvedPath).deletingLastPathComponent().path) {
+                sqlite3_close(db)
+                db = nil
+                guard sqlite3_open_v2(resolvedPath, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK else {
+                    if let db { sqlite3_close(db) }
+                    return nil
+                }
+                sqlite3_busy_timeout(db, 2000)
+            }
+        }
         return db
     }
 
@@ -1155,7 +1326,7 @@ private enum IndiaSQLiteSupport {
             return false
         }
         defer { sqlite3_finalize(statement) }
-        sqlite3_bind_text(statement, 1, (tableName as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(statement, 1, (tableName as NSString).utf8String, -1, sqliteTransient)
         return sqlite3_step(statement) == SQLITE_ROW
     }
 
@@ -1231,7 +1402,8 @@ private enum IndiaSQLiteSupport {
         let a = sin(dLat / 2) * sin(dLat / 2) +
             cos(lat1 * .pi / 180.0) * cos(lat2 * .pi / 180.0) *
             sin(dLon / 2) * sin(dLon / 2)
-        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        let clamped = min(1, max(0, a))
+        let c = 2 * atan2(sqrt(clamped), sqrt(1 - clamped))
         return earthRadius * c
     }
 }

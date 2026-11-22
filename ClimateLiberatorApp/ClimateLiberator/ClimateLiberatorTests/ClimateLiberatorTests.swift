@@ -285,11 +285,12 @@ final class ClimateLiberatorTests: XCTestCase {
     func testIndiaPortfolioRollupServiceCachesLoadedSnapshots() {
         let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
         let databaseURL = tempRoot.appendingPathComponent("india_rollup.db")
         FileManager.default.createFile(atPath: databaseURL.path, contents: Data(), attributes: nil)
         let modifiedAt = try? databaseURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
 
-        let expectedSnapshot = IndiaPortfolioRollupSnapshot(
+        var expectedSnapshot = IndiaPortfolioRollupSnapshot(
             databasePath: databaseURL.path,
             databaseModifiedAt: modifiedAt,
             generatedAt: Date(timeIntervalSince1970: 1_700_000_100),
@@ -328,6 +329,7 @@ final class ClimateLiberatorTests: XCTestCase {
         let first = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
         let second = service.loadPortfolioRollupSnapshot(at: databaseURL.path)
 
+        expectedSnapshot.databaseRevision = IndiaDatabaseRevision.read(at: databaseURL.path)
         XCTAssertEqual(loader.loadCount, 1)
         XCTAssertEqual(first, expectedSnapshot)
         XCTAssertEqual(second, expectedSnapshot)
@@ -778,17 +780,23 @@ final class ClimateLiberatorTests: XCTestCase {
     }
 }
 
-private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore {
+// All mutable test storage is protected by the same lock as background evidence I/O.
+nonisolated private final class InMemoryForecastSnapshotStore: ForecastEvidenceSnapshotStore, @unchecked Sendable {
+    private let lock = NSLock()
     private var snapshots: [ForecastEvidenceSnapshot] = []
 
     func saveSnapshot(_ snapshot: ForecastEvidenceSnapshot) throws {
+        lock.lock()
+        defer { lock.unlock() }
         snapshots.removeAll { $0.id == snapshot.id }
         snapshots.append(snapshot)
         snapshots.sort { $0.capturedAt > $1.capturedAt }
     }
 
     func loadSnapshots() -> [ForecastEvidenceSnapshot] {
-        snapshots
+        lock.lock()
+        defer { lock.unlock() }
+        return snapshots
     }
 }
 

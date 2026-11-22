@@ -1,166 +1,145 @@
 # Climate Liberator
 
-Climate Liberator is a macOS climate risk intelligence platform for company-scale hazard simulation, portfolio screening, forecast intelligence, and disclosure workflows. The current build is India-first, wildfire-led, and designed to scale into a broader company climate risk operating system.
+An India-first macOS climate-risk workbench for hazard simulation, exposure
+screening, financial-impact prototypes, forecast evidence and disclosure review.
+Wildfire is the first hazard implementation, not a claim of multi-hazard coverage.
 
-## What This Repository Contains
+This is an actively developed desktop product, not an enterprise-certified risk
+model or a hosted service with an SLA. See [Product Architecture](docs/product-architecture.md).
 
-This repository is no longer just a wildfire engine fork. It is the working codebase for the Climate Liberator product and its supporting build/data layers.
+## Install or Build
 
-Core product surfaces:
-- `Dashboard`: the main launcher for the platform
-- `Portfolio Intelligence`: company, site, and imported exposure screening
-- `Climate Simulation`: wildfire simulation and evidence generation
-- `Forecast Intelligence`: weather, seasonal, subseasonal, and air-quality intelligence
-- `TCFD Dashboard`: review, approval, and board-pack workflow
-- `Executive Overview`: management-facing summary of promoted evidence
+The app targets **macOS 26.2 or later**. Packages are architecture-specific;
+Apple Silicon is the locally tested target. The SwiftUI app is not a Windows
+or Linux application.
 
-## Current Product Capabilities
+Extract a compatible `Climate-Liberator-arm64.zip` and move `ClimateLiberator.app`
+to Applications. The package includes its engine, native libraries, fuel tables
+and a small offline starter dataset. End users do not need Homebrew, Xcode,
+Python, a source checkout or the developer's Build folder for the packaged
+**prepared-ASCII S simulation**.
 
-### Climate Simulation
-- Wildfire simulation workflow with run configuration import/export
-- Output review, evidence packaging, and artifact handling
-- India preparedness and operations-console style execution
-- Underlying wildfire engine support from the Cell2Fire-based code in this repository
+The current package is locally signed for internal testing, **not notarized**.
+Public distribution still needs appropriate signing/notarization. This change
+does not automatically publish a downloadable release.
 
-### Portfolio Intelligence
-- India-first portfolio and site screening
-- Imported OED portfolio intake and canonical exposure persistence
-- OED-style export for interoperability
-- Risk concentration and nearby asset/site context
+To build from the repository root on a Mac with Xcode and its command-line tools:
 
-### Forecast Intelligence
-- Short-term, subseasonal, and seasonal forecast support
-- Air-quality outlook support
-- Processed feed priority with live fallback where appropriate
-- Trust, freshness, source, and evidence-promotion controls
+```sh
+brew install libomp libtiff boost
+open ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
+# Or build, verify relocation, and create a local release ZIP:
+bash scripts/package_macos.sh
+# Or build and replace the copy in Applications (what Finder, Dock and Spotlight open):
+bash scripts/install_macos.sh
+```
 
-### Disclosure Workflow
-- Scenario library and package review workflow
-- Threshold-breach actions
-- Approval evidence and review history
-- Board-pack export
-- Quantitative financial-effects proxy support
+Xcode's Run launches a separate Debug build. After code changes, run
+`scripts/install_macos.sh` so the app you open from Applications is current.
 
-## Repository Structure
+Xcode 26.3 was used for local validation. Build scripts discover dependency
+locations rather than assuming a Homebrew installation path. The package is
+written to `.build/releases/` and is not committed to Git. Set
+`CLIMATE_BUILD_DIR` or `CLIMATE_RELEASE_DIR` to change build/output roots.
 
-Top-level layout:
+## First Run and India Data
+
+First launch installs writable starter resources:
+- 12 **synthetic** building records near Bengaluru, labelled demonstration data.
+- A synthetic 12 x 12, 30-metre Scott & Burgan study in UTM 43N.
+- An INR-denominated example CSV for the current OED screening importer.
+
+These are engineering fixtures, **not actual buildings, surveyed fuels, insured
+values, a national dataset or an India-calibrated wildfire assessment**.
+No live forecasts or precomputed risk assessments are bundled.
+
+Use **Settings > India Data > Import India Database** to install an approved
+database matching [the app schema](ClimateLiberatorApp/resources/india_schema.sql).
+Imports validate schema/integrity, include committed SQLite WAL data, and retain
+the previous installed database as a backup. Portfolio Intelligence also accepts
+the app's OED screening files. This is not certification of complete OED
+financial-contract support. Use verified exposure values and source provenance.
+
+## Where Data Lives
+
+| Location under your home folder | Contents |
+|---|---|
+| `Library/Application Support/ClimateLiberator/StarterData-v1/` | Writable starter study and synthetic exposure data |
+| `Library/Application Support/ClimateLiberator/Data/India/` | Imported India database and pre-import backups |
+| `Library/Application Support/ClimateLiberator/Data/Forecast/processed/` | User-installed processed forecast JSON and `manifests/` |
+| `Library/Application Support/ClimateLiberator/Runs/` | Default simulation outputs |
+| `Library/Application Support/ClimateLiberator/Exports/` | Default India screening exports |
+| `Documents/ClimateLiberator/` | Existing scenario, disclosure and evidence storage |
+
+Settings includes **Open Data Folder**. Existing explicit study/output/engine
+preferences are preserved; **Use Bundled** clears an obsolete engine override.
+Close the app and other database writers before migrating data to another Mac.
+Back up both library and Documents locations, plus any custom output folders.
+Git preserves source and bundled fixtures, **not private imported data or runs**.
+
+Map tiles, place search and live forecasts require internet. Processed forecasts
+must be current and near the selected location; synthetic, expired and distant
+feeds are not silently substituted. GDAL-dependent reprojection/KMZ and Earth
+Engine preparation remain optional, separately configured workflows.
+
+## Product and Engine Boundaries
+
+The app retains Dashboard, Portfolio Intelligence, Climate Simulation, Forecast
+Intelligence, Executive Overview, GHG Accounting and Disclosure. Disclosure
+prepares BRSR, BRSR Core and IFRS S2 drafts for client companies (see
+`docs/disclosure-platform.md`); it is not a claim of regulatory compliance or
+assurance.
+
+The supported simulation UI targets **S (Scott & Burgan)**. The default backend
+is built from the Cell2Fire-derived source in this repository and packaged inside
+the app. Embedded and native-rewrite adapters remain experimental until their
+scientific/output acceptance checks pass. The external `Build/engine-rewrite`
+workspace is a development lab, **not an installation requirement**.
+
+Speculative control-plane readiness panels have been removed from the active
+shell. Reversible enterprise proposals remain under `docs/future/`; these are
+not deployed authentication, multi-user services or proven availability.
+See [the portability audit](docs/india-portability-audit.md).
+
+## GHG Accounting (GPC)
+
+The **GHG Inventory** workspace builds city inventories under the GPC: draw or
+import a boundary, enter activity data per sector with emission factors, and
+review BASIC / BASIC+ totals with a completeness check. Factors come from a
+bundled IPCC/CEA reference library or connected databases (Climatiq, any CSV
+URL, any JSON/REST API); API keys are kept in the Keychain. It is a separate
+track from the risk core. See [GHG accounting](docs/ghg-accounting.md).
+
+## Tests
+
+```sh
+xcodebuild -project ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -scheme ClimateLiberator -destination 'platform=macOS' test
+xcodebuild -project ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
+  -scheme ClimateLiberatorUITests -destination 'platform=macOS' test
+```
+
+UI tests require an unlocked graphical Mac and test-runner permissions.
+Unit tests include fresh installation, WAL-safe import, cache refresh,
+latest-assessment rollups, a synthetic 100,000-asset benchmark, and forecast
+selection/cache checks. Packaging copies the app to a path with spaces, checks
+native dependency closure and seed hashes, and runs the synthetic S fixture
+with a minimal environment.
+
+## Repository Layout
 
 ```text
-ClimateLiberatorApp/    macOS application, tests, assets, UI, stores, services
-Cell2Fire/              underlying wildfire engine and native simulation code
-data/                   sample and prepared data inputs
-docs/                   architecture, optimization, QA, and product planning
-container/              container build assets
-test/                   engine-side tests and fixtures
-.github/workflows/      CI workflows inherited and evolving with the project
+ClimateLiberatorApp/    SwiftUI app, tests, starter resources, native build scripts
+Cell2Fire/              Cell2Fire-derived wildfire source and bridging API
+scripts/               Starter generation and macOS packaging verification
+data/                  Additional prepared engine fixtures
+test/                  Inherited engine tests
+docs/                  Architecture, QA, science notes and deferred plans
 ```
 
-Important app paths:
-- App project:
-  - `ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj`
-- Main app source:
-  - `ClimateLiberatorApp/ClimateLiberator/ClimateLiberator`
+## Attribution
 
-## Architecture Direction
-
-Climate Liberator is being built as a layered system:
-
-1. `App layer`
-   - macOS-native product surfaces for operations, portfolio, forecast, and disclosure
-2. `Build/data layer`
-   - typed contracts, manifests, validators, portfolio feeds, and forecast artifacts
-3. `Engine/provider layer`
-   - wildfire engine, processed forecast feeds, and external data/provider integration
-
-The codebase is actively being refactored toward:
-- stronger SOLID boundaries
-- smaller service-oriented modules
-- artifact-first workflows
-- better scaling for future hazards and frameworks
-
-## Getting Started
-
-### macOS app
-
-Open the Xcode project:
-
-```bash
-open /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj
-```
-
-Or build from the command line:
-
-```bash
-xcodebuild \
-  -project /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
-  -scheme ClimateLiberator \
-  -destination 'platform=macOS' \
-  build
-```
-
-### Tests
-
-App scheme tests:
-
-```bash
-xcodebuild \
-  -project /Users/afnan/Desktop/Climate-Liberator/ClimateLiberatorApp/ClimateLiberator/ClimateLiberator.xcodeproj \
-  -scheme ClimateLiberator \
-  -destination 'platform=macOS' \
-  test
-```
-
-Build/data validation suites:
-
-```bash
-/Users/afnan/Desktop/Build/engine-rewrite/tests/run_disclosure_milestone.sh
-/Users/afnan/Desktop/Build/india-risk-data/tests/run_data_milestone.sh
-/Users/afnan/Desktop/Build/engine-rewrite/tests/run_performance_validation.sh
-```
-
-## Standards and Interoperability
-
-The product is being built to support structured climate risk workflows rather than only raw hazard runs.
-
-Current and planned standards seams include:
-- `OED`: structured exposure intake/export
-- `TCFD / IFRS S2`: disclosure workflow foundation
-- future adapter direction for broader reporting frameworks
-
-## Current Status
-
-The repository is in active product transition from an inherited wildfire simulation base into a full climate risk intelligence platform.
-
-Already in place:
-- renamed product and app structure
-- separate dashboard/workspace model
-- OED intake/export seam
-- forecast intelligence window and processed-feed model
-- TCFD review and board-pack workflow
-- Xcode unit, performance, and UI smoke tests
-- Obsidian second-brain documentation of architecture and decisions
-
-Still evolving:
-- deeper simulation orchestration extraction
-- richer portfolio analytics and company hierarchy
-- stronger artifact-first runtime pipeline
-- broader framework support
-- future multi-hazard expansion
-
-## Heritage
-
-This repository still contains the Cell2Fire-derived wildfire engine and related native tooling. That work remains important inside Climate Liberator, but the repository now represents a larger product system than the original simulator alone.
-
-## Documentation
-
-Primary local architecture and project memory live in:
-
-- `docs/`
-- `/Users/afnan/Documents/Obsidian Vault/Codex/Climate Liberator`
-
-The Obsidian second brain tracks:
-- system architecture
-- engineering decisions
-- build/data layer design
-- testing and benchmark notes
-- roadmap and connected graph views
+The wildfire subsystem derives from Cell2Fire and Cell2Fire W. Original
+authorship and licensing remain intact; product branding does not remove those
+obligations. See [LICENSE](LICENSE) and source notices. Packaged native
+dependencies include available license notices in `Contents/Resources/Licenses`.

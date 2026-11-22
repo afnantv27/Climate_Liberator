@@ -1,0 +1,2 @@
+LocID,PerilID,Latitude,Longitude,AssetName,AccNumber,CountryCode,CurrencyCode,TIV_Building
+SYNTHETIC-IN-001,WF,12.9716,77.5946,SYNTHETIC example building,SAMPLE-001,IN,INR,1000000

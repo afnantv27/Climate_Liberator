@@ -64,30 +64,6 @@ extension ContentView {
         return .ready
     }
 
-    var operationsWorkspaceAvailability: ActionAvailability {
-        if simulationState.isRunning {
-            return .unavailable("A wildfire simulation is currently running in the operations workspace.")
-        }
-        if let warning = validateEnvironment() {
-            return .unavailable(warning)
-        }
-        return .ready
-    }
-
-    var portfolioIntelligenceAvailability: ActionAvailability {
-        if indiaRiskStore.lookupAvailability.isEnabled {
-            return .ready
-        }
-        return .unavailable(indiaRiskStore.lookupAvailability.reason ?? "Connect a queryable India risk database before screening the portfolio.")
-    }
-
-    var disclosureReviewAvailability: ActionAvailability {
-        guard !reviewStore.bundles.isEmpty else {
-            return .unavailable("Generate a disclosure package from a successful run before starting disclosure review.")
-        }
-        return .ready
-    }
-
     var runActionAvailability: ActionAvailability {
         if simulationState.isRunning {
             return .unavailable("A wildfire simulation is already running.")
@@ -150,18 +126,6 @@ extension ContentView {
             return .ready
         }
         return .unavailable("Complete the dataset, band, dates, credentials, and helper script before fetching.")
-    }
-
-    var latestDisclosureReportAvailability: ActionAvailability {
-        guard let latest = reviewStore.bundles.first else {
-            return .unavailable("Generate a disclosure package before opening a report.")
-        }
-        return AppActionSupport.pathAvailability(
-            path: latest.reportURL,
-            expectation: .file,
-            emptyReason: "The latest disclosure package does not include a report file.",
-            missingReason: "The latest disclosure report cannot be found on disk."
-        )
     }
 
     var latestEvidencePackageAvailability: ActionAvailability {

@@ -57,70 +57,13 @@ extension ContentView {
         }
     }
 
-    var dashboardWorkspaceView: some View {
-        DashboardWorkspaceView(
-            enterpriseReadiness: enterpriseReadinessSummary,
-            openClimateSimulation: {
-                activeWorkspace = .operations
-            },
-            openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") },
-            openCommandCenter: {
-                activeWorkspace = .commandCenter
-            },
-            openPortfolioIntelligence: {
-                activeWorkspace = .intelligence
-            }
-        )
-    }
-
-    var commandCenterWorkspaceView: some View {
-        CommandCenterWorkspaceView(
-            scenarioStore: scenarioStore,
-            reviewStore: reviewStore,
-            forecastStore: forecastStore,
-            activeWorkspace: $activeWorkspace,
-            theme: theme,
-            enterpriseReadiness: enterpriseReadinessSummary,
-            latestDisclosureReportAvailability: latestDisclosureReportAvailability,
-            logActionAvailability: logActionAvailability,
-            operationsWorkspaceAvailability: operationsWorkspaceAvailability,
-            portfolioIntelligenceAvailability: portfolioIntelligenceAvailability,
-            disclosureReviewAvailability: disclosureReviewAvailability,
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") },
-            openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
-            openOperationsLog: {
-                activeWorkspace = .operations
-                simulationState.showLogSheet = true
-            }
-        )
-    }
-
-    var enterpriseReadinessSummary: EnterpriseReadinessSummary {
-        enterprisePlatform
-            .dashboard
-            .fetchSummary(request: EnterpriseDashboardSummaryRequest(outputFolder: outputFolder))
-            .readinessSummary
-    }
-
-    var intelligenceWorkspaceView: some View {
-        PortfolioIntelligenceWorkspaceView(
-            indiaRiskStore: indiaRiskStore,
-            exposureIntakeStore: exposureIntakeStore,
-            mapRegion: $mapRegion,
-            activeWorkspace: $activeWorkspace,
-            theme: theme,
-            openTCFDDashboard: { openWindow(id: "tcfd-dashboard") }
-        )
-    }
-
     func executiveMetricCard(title: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.72))
             Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.appMetric)
                 .foregroundColor(.white)
             Text(detail)
                 .font(.footnote)
@@ -143,7 +86,7 @@ extension ContentView {
                                                    @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
-                .font(.title3.bold())
+                .font(.appSectionTitle)
                 .foregroundColor(.white)
             Text(subtitle)
                 .font(.footnote)
@@ -475,10 +418,12 @@ extension ContentView {
 
     var environmentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SettingRow(title: "Cell2Fire Binary", theme: theme) {
-                TextField("/path/to/Cell2Fire", text: $binaryPath)
+            SettingRow(title: "Engine Override (Optional)", theme: theme) {
+                TextField("Bundled engine (default)", text: $binaryPath)
                     .themedField(background: theme.fieldBackground, textColor: theme.textColor)
                 Button("Choose…") { showingBinaryPicker = true }
+                Button("Use Bundled") { binaryPath = "" }
+                    .disabled(binaryPath.isEmpty)
             }
 
             SettingRow(title: "Input Folder", theme: theme) {
@@ -492,7 +437,7 @@ extension ContentView {
                     .themedField(background: theme.fieldBackground, textColor: theme.textColor)
                 Button("Choose…") { showingOutputPicker = true }
             }
-            Text("Choose the directory where Cell2Fire should write RateOfSpread outputs.")
+            Text("The bundled engine runs without a source checkout. Choose a writable directory for simulation outputs.")
                 .font(.footnote)
                 .foregroundColor(theme.subtleTextColor)
 
@@ -526,7 +471,7 @@ extension ContentView {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
                 if scenarioStore.scenarios.isEmpty {
-                    Text("No saved scenarios yet. Open the governance dashboard to create one.")
+                    Text("No saved scenarios yet. Use New Scenario to create one.")
                         .font(.footnote)
                         .foregroundColor(theme.subtleTextColor)
                 } else {
@@ -551,10 +496,7 @@ extension ContentView {
                     }
                     .disabled(!selectedScenarioApplicationAvailability.isEnabled)
 
-                    Button("Open TCFD Dashboard") {
-                        openWindow(id: "tcfd-dashboard")
-                    }
-                    .buttonStyle(.bordered)
+                    ScenarioLibraryControls(store: scenarioStore)
                 }
 
                 if let reason = selectedScenarioApplicationAvailability.reason, !selectedScenarioApplicationAvailability.isEnabled {
@@ -683,7 +625,7 @@ extension ContentView {
             }
             .toggleStyle(SwitchToggleStyle(tint: theme.accentColor))
 
-            TextField("e.g., 28998 or EPSG:28992", text: $overrideCRSCode)
+            TextField("e.g., EPSG:32643 for UTM 43N", text: $overrideCRSCode)
                 .textFieldStyle(.roundedBorder)
                 .disabled(!useOverrideCRS)
                 .opacity(useOverrideCRS ? 1 : 0.35)

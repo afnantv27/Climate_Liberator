@@ -215,8 +215,6 @@ Cell2Fire/.claude/
 xcuserdata/
 *.xcuserstate
 
-*.gch
-
 # ClimateLiberator generated artifacts and local session notes
 ClimateLiberatorApp/build/
 codex-session-notes.md
