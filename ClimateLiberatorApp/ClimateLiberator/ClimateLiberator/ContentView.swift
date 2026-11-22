@@ -28,7 +28,7 @@ struct ContentView: View {
         span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)
     )
     @StateObject var simulationState = SimulationRunState()
-    @State var activeWorkspace: AppWorkspace = .dashboard
+    @State var activeWorkspace: AppWorkspace = .home
     @State var isPanelVisible = true
     @StateObject var locationSearchState = LocationSearchState()
     @State var useSatelliteView = false
@@ -61,11 +61,12 @@ struct ContentView: View {
     @AppStorage("climateliberator.ee.expanded") var earthEngineExpanded = false
     @StateObject var earthEngineState = EarthEngineFetchState()
     @StateObject var indiaRiskStore = IndiaRiskStore()
-    @StateObject var exposureIntakeStore = ExposureIntakeStore()
     /// Owned by the app (not the window) so unsaved inventories survive a closed window
     /// and the quit prompt can find them.
     @ObservedObject var ghgInventoryStore: GPCInventoryStore
     @ObservedObject var emissionFactorStore: EmissionFactorLibraryStore
+    @ObservedObject var clientRegistry: ClientRegistryStore
+    @ObservedObject var reductionStore: ReductionStore
     /// Owned by the app so unsaved client engagements survive a closed window.
     @ObservedObject var disclosureStore: DisclosureStore
     @State var reviewRefreshWorkItem: DispatchWorkItem?
@@ -87,6 +88,8 @@ struct ContentView: View {
          ghgInventoryStore: GPCInventoryStore,
          emissionFactorStore: EmissionFactorLibraryStore,
          disclosureStore: DisclosureStore,
+         clientRegistry: ClientRegistryStore,
+         reductionStore: ReductionStore,
          simulationEngineService: SimulationEngineServicing = HybridSimulationEngineAdapter(),
          artifactService: SimulationArtifactServicing = SimulationArtifactService(),
          runConfigService: SimulationRunConfigServicing = SimulationRunConfigService(),
@@ -98,6 +101,8 @@ struct ContentView: View {
         _ghgInventoryStore = ObservedObject(wrappedValue: ghgInventoryStore)
         _emissionFactorStore = ObservedObject(wrappedValue: emissionFactorStore)
         _disclosureStore = ObservedObject(wrappedValue: disclosureStore)
+        _clientRegistry = ObservedObject(wrappedValue: clientRegistry)
+        _reductionStore = ObservedObject(wrappedValue: reductionStore)
         _outputStore = StateObject(wrappedValue: SimulationOutputStore(treeService: outputTreeService))
         self.simulationEngineService = simulationEngineService
         self.artifactService = artifactService
@@ -167,62 +172,14 @@ struct ContentView: View {
         ClimateLiberatorWorkspaceShellView(
             activeWorkspace: $activeWorkspace,
             theme: theme,
-            dashboardView: AnyView(dashboardWorkspaceView),
-            executiveOverviewView: AnyView(commandCenterWorkspaceView),
-            portfolioIntelligenceView: AnyView(intelligenceWorkspaceView),
-            operationsView: AnyView(
-                ClimateSimulationWorkspaceView(
-                    theme: theme,
-                    isPanelVisible: isPanelVisible,
-                    controlsExpanded: controlsExpanded,
-                    mapLayer: AnyView(mapLayer),
-                    searchCard: AnyView(searchCard),
-                    earthEngineCard: AnyView(earthEngineCard),
-                    themePicker: AnyView(
-                        Picker("Theme", selection: $theme) {
-                            ForEach(ThemeStyle.allCases) { style in
-                                Text(style.displayName).tag(style)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    ),
-                    siteContent: AnyView(
-                        VStack(alignment: .leading, spacing: 18) {
-                            searchCard
-                            earthEngineCard
-                            indiaSiteLookupSection
-                        }
-                    ),
-                    inputsContent: AnyView(
-                        VStack(alignment: .leading, spacing: 18) {
-                            environmentSection
-                            scenarioWorkflowSection
-                            dashboardPanelCard(title: "India Preparedness Checklist",
-                                               subtitle: "Prepared-instance validation for India-first wildfire studies. Keep this with simulation setup, not portfolio screening.") {
-                                indiaWildfireReadinessPanel
-                            }
-                        }
-                    ),
-                    runContent: AnyView(runSetupSection),
-                    outputsContent: AnyView(resultsSection),
-                    logsContent: AnyView(
-                        VStack(alignment: .leading, spacing: 18) {
-                            dashboardPanelCard(title: "Recent Simulation Activity",
-                                               subtitle: "Latest wildfire runs captured in the current session.") {
-                                recentSimulationActivityPanel
-                            }
-                            logSection
-                        }
-                    ),
-                    onTogglePanel: togglePanel,
-                    onToggleExpanded: toggleControlPanel
-                )
-            ),
+            homeView: AnyView(homeWorkspaceView),
+            clientsView: AnyView(clientsWorkspaceView),
             ghgAccountingView: AnyView(
                 GHGAccountingWorkspaceView(inventoryStore: ghgInventoryStore,
                                            factorStore: emissionFactorStore,
                                            theme: theme)
             ),
+            reduceView: AnyView(reduceWorkspaceView),
             disclosureView: AnyView(
                 DisclosureWorkspaceView(store: disclosureStore,
                                         ghgStore: ghgInventoryStore,
@@ -230,8 +187,59 @@ struct ContentView: View {
                                         theme: theme,
                                         openGHGAccounting: { activeWorkspace = .ghgAccounting })
             ),
-            operationsOverlayControls: AnyView(mapModeControls),
+            climateRiskView: AnyView(climateRiskWorkspaceView),
+            climateRiskOverlayControls: AnyView(mapModeControls),
             quitApplication: quitApplication
+        )
+    }
+
+    /// The wildfire simulation workspace (map, inputs, runs, outputs, logs).
+    var climateRiskWorkspaceView: some View {
+        ClimateSimulationWorkspaceView(
+            theme: theme,
+            isPanelVisible: isPanelVisible,
+            controlsExpanded: controlsExpanded,
+            mapLayer: AnyView(mapLayer),
+            searchCard: AnyView(searchCard),
+            earthEngineCard: AnyView(earthEngineCard),
+            themePicker: AnyView(
+                Picker("Theme", selection: $theme) {
+                    ForEach(ThemeStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+            ),
+            siteContent: AnyView(
+                VStack(alignment: .leading, spacing: 18) {
+                    searchCard
+                    earthEngineCard
+                    indiaSiteLookupSection
+                }
+            ),
+            inputsContent: AnyView(
+                VStack(alignment: .leading, spacing: 18) {
+                    environmentSection
+                    scenarioWorkflowSection
+                    dashboardPanelCard(title: "India Preparedness Checklist",
+                                       subtitle: "Prepared-instance validation for India-first wildfire studies. Keep this with simulation setup, not portfolio screening.") {
+                        indiaWildfireReadinessPanel
+                    }
+                }
+            ),
+            runContent: AnyView(runSetupSection),
+            outputsContent: AnyView(resultsSection),
+            logsContent: AnyView(
+                VStack(alignment: .leading, spacing: 18) {
+                    dashboardPanelCard(title: "Recent Simulation Activity",
+                                       subtitle: "Latest wildfire runs captured in the current session.") {
+                        recentSimulationActivityPanel
+                    }
+                    logSection
+                }
+            ),
+            onTogglePanel: togglePanel,
+            onToggleExpanded: toggleControlPanel
         )
     }
 
@@ -352,7 +360,7 @@ struct ContentView: View {
             indiaRiskStore.refreshDatabaseStatus()
         }
         .onAppear {
-            activeWorkspace = .dashboard
+            activeWorkspace = .home
             reloadIgnitionCells()
             refreshOutputTree()
             refreshReviewDiscoveryRoots()

@@ -23,21 +23,22 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testDashboardShowsPrimaryWorkflows() throws {
+    func testHomeShowsModules() throws {
         let app = configuredApp()
         app.launch()
 
-        let dashboard = app.radioButtons["Dashboard"].firstMatch
-        XCTAssertTrue(dashboard.waitForExistence(timeout: 5))
-        XCTAssertEqual((dashboard.value as? NSNumber)?.intValue, 1)
+        let home = app.radioButtons["Home"].firstMatch
+        XCTAssertTrue(home.waitForExistence(timeout: 5))
+        XCTAssertEqual((home.value as? NSNumber)?.intValue, 1)
         XCTAssertTrue(app.buttons["Open Climate Simulation"].firstMatch.exists)
         XCTAssertTrue(app.buttons["Open Forecast Intelligence"].firstMatch.exists)
         XCTAssertTrue(app.buttons["Open Disclosure"].firstMatch.exists)
-        XCTAssertFalse(app.staticTexts["Enterprise Readiness"].exists)
+        XCTAssertTrue(app.buttons["Open Clients"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["Open Reduce"].firstMatch.exists)
     }
 
     @MainActor
-    func testForecastWindowOpensFromDashboard() throws {
+    func testForecastWindowOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 
@@ -50,14 +51,14 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testClimateSimulationOpensFromDashboard() throws {
+    func testClimateSimulationOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 
         let simulationButton = app.buttons["Open Climate Simulation"].firstMatch
         XCTAssertTrue(simulationButton.waitForExistence(timeout: 5))
         for _ in 0..<4 where !simulationButton.isHittable {
-            app.scrollViews["dashboard.scroll"].firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+            app.scrollViews["home.scroll"].firstMatch.scroll(byDeltaX: 0, deltaY: -250)
         }
         XCTAssertTrue(simulationButton.isHittable)
         simulationButton.click()
@@ -70,7 +71,7 @@ final class ClimateLiberatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testDisclosureOpensFromDashboard() throws {
+    func testDisclosureOpensFromHome() throws {
         let app = configuredApp()
         app.launch()
 

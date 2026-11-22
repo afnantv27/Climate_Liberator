@@ -117,7 +117,7 @@ struct ForecastIntelligenceWindow: View {
                 }
 
                 HStack(spacing: 12) {
-                    Button("Promote To Executive") {
+                    Button("Promote To Home") {
                         store.promoteLatestSnapshotToExecutive()
                     }
                     .buttonStyle(.bordered)

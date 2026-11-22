@@ -197,56 +197,6 @@ enum EarthEngineTarget: String, CaseIterable, Identifiable {
     }
 }
 
-enum AppWorkspace: String, CaseIterable, Identifiable {
-    case dashboard
-    case commandCenter
-    case intelligence
-    case operations
-    case ghgAccounting
-    case disclosure
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .dashboard: return "Dashboard"
-        case .commandCenter: return "Executive Overview"
-        case .intelligence: return "Portfolio Intelligence"
-        case .operations: return "Simulation Workspace"
-        case .ghgAccounting: return "GHG Accounting (GPC)"
-        case .disclosure: return "Disclosure (BRSR · IFRS S2)"
-        }
-    }
-
-    var shortTitle: String {
-        switch self {
-        case .dashboard: return "Dashboard"
-        case .commandCenter: return "Overview"
-        case .intelligence: return "Portfolio"
-        case .operations: return "Simulation"
-        case .ghgAccounting: return "GHG Inventory"
-        case .disclosure: return "Disclosure"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .dashboard:
-            return "Launch the core Climate Liberator workspaces from one place."
-        case .commandCenter:
-            return "Management status, disclosure readiness, and next actions."
-        case .intelligence:
-            return "India screening, demo workflow, and portfolio concentration analysis."
-        case .operations:
-            return "Map-based modelling, inputs, and run execution."
-        case .ghgAccounting:
-            return "City GHG inventories (GPC BASIC/BASIC+) with emission factors from connected databases."
-        case .disclosure:
-            return "BRSR, BRSR Core and IFRS S2 reporting for client companies: data, review, sign-off and reports."
-        }
-    }
-}
-
 enum BinaryResolution {
     case resolved(String)
     case needsPath

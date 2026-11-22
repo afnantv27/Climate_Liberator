@@ -21,15 +21,13 @@ final class GPCInventoryStore: ObservableObject {
     /// Inventories that have a file on disk.
     private var savedIDs: Set<UUID> = []
 
-    /// The app's store, consulted before quitting. Tests create their own stores.
-    static weak var active: GPCInventoryStore?
 
     init(locations: GHGDataLocations = .current, loadFromDisk: Bool = true) {
         self.locations = locations
         self.persists = loadFromDisk
         if loadFromDisk {
             load()
-            if Self.active == nil { Self.active = self }
+            UnsavedWorkRegistry.register(self)   // asked about before quitting
         }
         selectedID = inventories.first?.id
     }

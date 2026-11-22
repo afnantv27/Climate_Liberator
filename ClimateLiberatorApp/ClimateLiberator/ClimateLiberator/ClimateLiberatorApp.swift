@@ -3,7 +3,7 @@ import AppKit
 
 @main
 struct ClimateLiberatorApp: App {
-    /// Asks to save unsaved GHG inventories and disclosure engagements before quitting.
+    /// Asks to save unsaved work (inventories, engagements, clients, plans) before quitting.
     @NSApplicationDelegateAdaptor(ClimateLiberatorAppDelegate.self) private var appDelegate
     @StateObject private var scenarioStore: ScenarioLibraryStore
     @StateObject private var reviewStore: TCFDReviewStore
@@ -11,6 +11,8 @@ struct ClimateLiberatorApp: App {
     @StateObject private var ghgInventoryStore = GPCInventoryStore()
     @StateObject private var emissionFactorStore = EmissionFactorLibraryStore()
     @StateObject private var disclosureStore = DisclosureStore()
+    @StateObject private var clientRegistry = ClientRegistryStore()
+    @StateObject private var reductionStore = ReductionStore()
     @State private var bootstrapError: String?
 
     init() {
@@ -28,7 +30,8 @@ struct ClimateLiberatorApp: App {
             LaunchExperienceView {
                 ContentView(scenarioStore: scenarioStore, reviewStore: reviewStore, forecastStore: forecastStore,
                             ghgInventoryStore: ghgInventoryStore, emissionFactorStore: emissionFactorStore,
-                            disclosureStore: disclosureStore)
+                            disclosureStore: disclosureStore, clientRegistry: clientRegistry,
+                            reductionStore: reductionStore)
             }
             .alert("Local data setup failed", isPresented: Binding(
                 get: { bootstrapError != nil }, set: { if !$0 { bootstrapError = nil } }

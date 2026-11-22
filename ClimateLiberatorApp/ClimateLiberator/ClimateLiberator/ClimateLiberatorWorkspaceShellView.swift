@@ -4,13 +4,14 @@ struct ClimateLiberatorWorkspaceShellView: View {
     @Binding var activeWorkspace: AppWorkspace
 
     let theme: ThemeStyle
-    let dashboardView: AnyView
-    let executiveOverviewView: AnyView
-    let portfolioIntelligenceView: AnyView
-    let operationsView: AnyView
+    let homeView: AnyView
+    let clientsView: AnyView
     let ghgAccountingView: AnyView
+    let reduceView: AnyView
     let disclosureView: AnyView
-    let operationsOverlayControls: AnyView
+    let climateRiskView: AnyView
+    /// Map controls shown over the Climate Risk workspace.
+    let climateRiskOverlayControls: AnyView
     let quitApplication: () -> Void
 
     var body: some View {
@@ -21,8 +22,8 @@ struct ClimateLiberatorWorkspaceShellView: View {
                     .padding(.horizontal, 20)
             }
             .overlay(alignment: .bottomTrailing) {
-                if activeWorkspace == .operations {
-                    operationsOverlayControls
+                if activeWorkspace == .climateRisk {
+                    climateRiskOverlayControls
                         .padding(.trailing, 20)
                         .padding(.bottom, 110)
                 }
@@ -31,18 +32,12 @@ struct ClimateLiberatorWorkspaceShellView: View {
 
     private var routedContent: AnyView {
         switch activeWorkspace {
-        case .dashboard:
-            return dashboardView
-        case .commandCenter:
-            return executiveOverviewView
-        case .intelligence:
-            return portfolioIntelligenceView
-        case .operations:
-            return operationsView
-        case .ghgAccounting:
-            return ghgAccountingView
-        case .disclosure:
-            return disclosureView
+        case .home: return homeView
+        case .clients: return clientsView
+        case .ghgAccounting: return ghgAccountingView
+        case .reduce: return reduceView
+        case .disclosure: return disclosureView
+        case .climateRisk: return climateRiskView
         }
     }
 

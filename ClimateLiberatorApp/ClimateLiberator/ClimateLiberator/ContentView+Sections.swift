@@ -57,57 +57,6 @@ extension ContentView {
         }
     }
 
-    var dashboardWorkspaceView: some View {
-        DashboardWorkspaceView(
-            openClimateSimulation: {
-                activeWorkspace = .operations
-            },
-            openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
-            openDisclosure: { activeWorkspace = .disclosure },
-            openCommandCenter: {
-                activeWorkspace = .commandCenter
-            },
-            openPortfolioIntelligence: {
-                activeWorkspace = .intelligence
-            },
-            openGHGAccounting: {
-                activeWorkspace = .ghgAccounting
-            }
-        )
-    }
-
-    var commandCenterWorkspaceView: some View {
-        CommandCenterWorkspaceView(
-            scenarioStore: scenarioStore,
-            reviewStore: reviewStore,
-            forecastStore: forecastStore,
-            activeWorkspace: $activeWorkspace,
-            theme: theme,
-            latestDisclosureReportAvailability: latestDisclosureReportAvailability,
-            logActionAvailability: logActionAvailability,
-            operationsWorkspaceAvailability: operationsWorkspaceAvailability,
-            portfolioIntelligenceAvailability: portfolioIntelligenceAvailability,
-            disclosureReviewAvailability: disclosureReviewAvailability,
-            openDisclosure: { activeWorkspace = .disclosure },
-            openForecastIntelligence: { openWindow(id: "forecast-intelligence") },
-            openOperationsLog: {
-                activeWorkspace = .operations
-                simulationState.showLogSheet = true
-            }
-        )
-    }
-
-    var intelligenceWorkspaceView: some View {
-        PortfolioIntelligenceWorkspaceView(
-            indiaRiskStore: indiaRiskStore,
-            exposureIntakeStore: exposureIntakeStore,
-            mapRegion: $mapRegion,
-            activeWorkspace: $activeWorkspace,
-            theme: theme,
-            openDisclosure: { activeWorkspace = .disclosure }
-        )
-    }
-
     func executiveMetricCard(title: String, value: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)

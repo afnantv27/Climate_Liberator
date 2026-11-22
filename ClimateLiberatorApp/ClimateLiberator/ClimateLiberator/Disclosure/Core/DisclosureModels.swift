@@ -6,15 +6,6 @@ import Foundation
 // without breaking saved engagements. Framework content (which KPIs exist, what they
 // mean) is code in `Catalog/`, not data; engagements only store answers keyed by id.
 
-// MARK: - Decoding helper
-
-extension KeyedDecodingContainer {
-    /// The value for `key`, or `fallback` when the key is missing.
-    nonisolated func value<T: Decodable>(_ key: Key, default fallback: T) throws -> T {
-        try decodeIfPresent(T.self, forKey: key) ?? fallback
-    }
-}
-
 // MARK: - Frameworks and workflow
 
 nonisolated enum DisclosureFramework: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -81,38 +72,6 @@ nonisolated enum AssuranceLevel: String, Codable, CaseIterable, Identifiable, Se
     }
 }
 
-nonisolated enum IndustrySector: String, Codable, CaseIterable, Identifiable, Sendable {
-    case manufacturing, energyUtilities, materialsMining, chemicals, financialServices, itServices
-    case consumerGoods, healthcare, realEstateConstruction, transportLogistics, agriculture, other
-
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .manufacturing: return "Manufacturing"
-        case .energyUtilities: return "Energy & Utilities"
-        case .materialsMining: return "Materials & Mining"
-        case .chemicals: return "Chemicals"
-        case .financialServices: return "Financial Services"
-        case .itServices: return "IT & Services"
-        case .consumerGoods: return "Consumer Goods & Retail"
-        case .healthcare: return "Healthcare & Pharma"
-        case .realEstateConstruction: return "Real Estate & Construction"
-        case .transportLogistics: return "Transport & Logistics"
-        case .agriculture: return "Agriculture & Food"
-        case .other: return "Other"
-        }
-    }
-    /// Services report intensity per employee or FTE rather than per tonne of product.
-    var isServices: Bool { self == .financialServices || self == .itServices }
-}
-
-/// "FY 2025-26" for a year starting April 2025 (Indian financial year).
-nonisolated enum ReportingPeriod {
-    static func label(_ startYear: Int) -> String {
-        "FY \(startYear)-\(String(format: "%02d", (startYear + 1) % 100))"
-    }
-    static func priorLabel(_ startYear: Int) -> String { label(startYear - 1) }
-}
 
 // MARK: - Company and team
 
@@ -701,6 +660,8 @@ nonisolated struct DisclosureEngagement: Codable, Hashable, Identifiable, Sendab
     var evidence: [EvidenceItem] = []
     var signOff: SignOff?
     var activity: [ActivityEvent] = []
+    /// The client in the Clients register this engagement belongs to, if linked.
+    var clientID: UUID?
     /// Illustrative data, never a real company.
     var isExample = false
     var createdAt = Date()
@@ -736,6 +697,7 @@ nonisolated struct DisclosureEngagement: Codable, Hashable, Identifiable, Sendab
     private enum CodingKeys: String, CodingKey {
         case id, profile, fiscalYearStart, frameworks, boundary, team, filingDeadline, metrics, narratives, issues
         case physicalRisks, policies, governance, evidence, signOff, activity, isExample, createdAt, updatedAt
+        case clientID
     }
 
     init(from decoder: Decoder) throws {
@@ -758,6 +720,7 @@ nonisolated struct DisclosureEngagement: Codable, Hashable, Identifiable, Sendab
         signOff = try c.decodeIfPresent(SignOff.self, forKey: .signOff)
         activity = try c.value(.activity, default: [])
         isExample = try c.value(.isExample, default: false)
+        clientID = try c.decodeIfPresent(UUID.self, forKey: .clientID)
         createdAt = try c.value(.createdAt, default: Date())
         updatedAt = try c.value(.updatedAt, default: Date())
     }

@@ -570,7 +570,7 @@ final class ForecastIntelligenceStore: ObservableObject {
     }
 
     func promoteLatestSnapshotToExecutive() {
-        updateLatestSnapshotPromotionLevel(.executiveEligible, message: "Snapshot promoted to Executive Overview.")
+        updateLatestSnapshotPromotionLevel(.executiveEligible, message: "Snapshot promoted to Home.")
     }
 
     func promoteLatestSnapshotToDisclosure() {

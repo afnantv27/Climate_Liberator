@@ -1,11 +1,9 @@
 import AppKit
 
-/// App delegate hook for the quit prompts: GHG inventories first, then disclosure
-/// engagements. Either prompt can cancel the quit.
+/// App delegate hook for the quit prompt. Every store holding unsaved work
+/// (inventories, engagements, clients, reduction plans) is asked about at once.
 final class ClimateLiberatorAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let ghg = GHGUnsavedChangesGuard.terminationReply()
-        guard ghg == .terminateNow else { return ghg }
-        return DisclosureUnsavedChangesGuard.terminationReply()
+        UnsavedWorkGuard.terminationReply()
     }
 }

@@ -20,8 +20,6 @@ final class DisclosureStore: ObservableObject {
     private let persists: Bool
     private var savedIDs: Set<UUID> = []
 
-    /// The app's store, consulted before quitting. Tests create their own stores.
-    static weak var active: DisclosureStore?
     static let userNameKey = "disclosure.userName"
     /// Edits by the same person to the same item within this window form one audit event.
     static let coalesceInterval: TimeInterval = 120
@@ -31,7 +29,7 @@ final class DisclosureStore: ObservableObject {
         self.persists = loadFromDisk
         if loadFromDisk {
             load()
-            if Self.active == nil { Self.active = self }
+            UnsavedWorkRegistry.register(self)   // asked about before quitting
         }
         selectedID = engagements.first?.id
     }
@@ -186,6 +184,9 @@ final class DisclosureStore: ObservableObject {
         }
         var engagement = engagements[index]
         change(&engagement)
+        // Bindings and fields losing focus often write back what is already there;
+        // publishing those would mark the engagement unsaved and redraw for nothing.
+        guard engagement != engagements[index] else { return }
         engagement.updatedAt = Date()
         engagements[index] = engagement
         unsavedIDs.insert(id)
@@ -206,6 +207,10 @@ final class DisclosureStore: ObservableObject {
 
     /// General audited edit of engagement-level fields (profile, team, policies…).
     func edit(_ id: UUID, action: String, target: String = "", _ change: (inout DisclosureEngagement) -> Void) {
+        guard var preview = engagement(id) else { return }
+        let before = preview
+        change(&preview)
+        guard preview != before else { return }   // no real change, nothing to log
         mutate(id) { engagement in
             change(&engagement)
             log(action, target: target, coalesce: true, in: &engagement)
