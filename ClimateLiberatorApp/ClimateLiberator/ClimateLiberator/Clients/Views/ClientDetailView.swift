@@ -53,7 +53,7 @@ struct ClientProfileCard: View {
                 }
                 DSFormRow("Cluster", width: 120) {
                     HStack(spacing: 6) {
-                        TextField("e.g. Tiruppur knitwear", text: binding(\.cluster)).textFieldStyle(.roundedBorder)
+                        TextField("e.g. Chennai polymer cluster", text: binding(\.cluster)).textFieldStyle(.roundedBorder)
                         if !store.clusters.isEmpty {
                             Menu {
                                 ForEach(store.clusters, id: \.self) { name in
