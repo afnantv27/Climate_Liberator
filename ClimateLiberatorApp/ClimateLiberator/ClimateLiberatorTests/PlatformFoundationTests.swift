@@ -6,8 +6,8 @@ import XCTest
 final class PlatformFoundationTests: XCTestCase {
 
     func testQuitPromptNamesASingleItem() {
-        let prompt = UnsavedWorkPrompt(groups: [(kind: "Clients", names: ["Acme Knit"]), (kind: "GHG inventories", names: [])])
-        XCTAssertEqual(prompt.title, "Do you want to save “Acme Knit”?")
+        let prompt = UnsavedWorkPrompt(groups: [(kind: "Clients", names: ["Acme Polymers"]), (kind: "GHG inventories", names: [])])
+        XCTAssertEqual(prompt.title, "Do you want to save “Acme Polymers”?")
         XCTAssertEqual(prompt.saveButton, "Save")
     }
 
@@ -25,7 +25,7 @@ final class PlatformFoundationTests: XCTestCase {
         let hemispheres = try XCTUnwrap(CoordinateText.parse("33.87°S 151.21°E"))
         XCTAssertEqual(hemispheres.latitude, -33.87, accuracy: 1e-9)
         XCTAssertNil(CoordinateText.parse("95, 10"), "Latitude out of range")
-        XCTAssertNil(CoordinateText.parse("Tiruppur"))
+        XCTAssertNil(CoordinateText.parse("Hosur"))
         XCTAssertNil(CoordinateText.parse("11.1"))
     }
 
@@ -33,7 +33,7 @@ final class PlatformFoundationTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("DocFolder-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: directory) }
         let folder = JSONDocumentFolder<Client>(directory: directory)
-        var client = Client(name: "Round Trip Knit")
+        var client = Client(name: "Round Trip Polymers")
         client.createdAt = Date(timeIntervalSince1970: 1_750_000_000)
         client.updatedAt = client.createdAt
         client.sites = [Site(name: "Plant")]
