@@ -1,11 +1,15 @@
 import Foundation
 
-/// An invented knitwear cluster: five MSMEs with sites and one year of KPI Data,
-/// so the cluster benchmark, Reduce and Home have something to show. Every
-/// company and figure is fictional; place coordinates are approximate.
+/// An invented polymer-processing and 3D-printing cluster: five MSMEs (moulding,
+/// film extrusion, additive manufacturing, recycling, tooling) with sites and one
+/// year of KPI Data, so the cluster benchmark, Reduce and Home have something to
+/// show. Every company and figure is fictional; place coordinates are approximate.
+/// Scope 2 ≈ grid electricity × 0.727 kg CO2e/kWh; Scope 1 ≈ fuel GJ × 0.063 t/GJ.
 @MainActor
 enum ExampleCluster {
-    static let clusterName = "Example knitwear cluster"
+    static let clusterName = "Example polymer & 3D printing cluster"
+    /// One unit for every member, so output intensity can be ranked.
+    static let outputUnit = "tonnes of polymer processed"
 
     private struct Member {
         let name: String
@@ -18,32 +22,32 @@ enum ExampleCluster {
     }
 
     private static let members: [Member] = [
-        Member(name: "Example Knit Fabrics Pvt Ltd", size: .small,
-               site: ("Knitting and compacting unit", .plant, "Tiruppur", 11.1085, 77.3411),
-               values: [MetricID.scope1: 820, MetricID.scope2: 2_450, MetricID.revenue: 64, MetricID.output: 3_100,
-                        MetricID.electricityRenewable: 4_000, MetricID.electricityNonRenewable: 11_000,
-                        "energy.nonRenewableFuel": 9_000, MetricID.waterConsumption: 48_000],
-               outputUnit: "tonnes of fabric", priorFactor: 1.06),
-        Member(name: "Example Dyeing & Processing Ltd", size: .medium,
-               site: ("Dyeing house with effluent treatment", .plant, "Tiruppur", 11.0790, 77.3820),
-               values: [MetricID.scope1: 5_600, MetricID.scope2: 3_900, MetricID.revenue: 120, MetricID.output: 5_200,
-                        MetricID.electricityRenewable: 2_000, MetricID.electricityNonRenewable: 17_500,
-                        "energy.nonRenewableFuel": 70_000, MetricID.waterConsumption: 310_000],
-               outputUnit: "tonnes of fabric", priorFactor: 1.02),
-        Member(name: "Example Garment Exports Pvt Ltd", size: .medium,
-               site: ("Stitching and finishing unit", .plant, "Tiruppur", 11.1270, 77.3050),
-               values: [MetricID.scope1: 300, MetricID.scope2: 2_100, MetricID.revenue: 210, MetricID.output: 2_400,
-                        MetricID.electricityRenewable: 6_500, MetricID.electricityNonRenewable: 8_700,
-                        "energy.nonRenewableFuel": 3_500, MetricID.waterConsumption: 22_000],
-               outputUnit: "tonnes of fabric", priorFactor: 1.09),
-        Member(name: "Example Yarn Spinners Pvt Ltd", size: .small,
-               site: ("Open-end spinning mill", .plant, "Coimbatore", 11.0168, 76.9558),
-               values: [MetricID.scope1: 450, MetricID.scope2: 6_800, MetricID.revenue: 95, MetricID.output: 4_800,
-                        MetricID.electricityRenewable: 9_000, MetricID.electricityNonRenewable: 31_000,
-                        "energy.nonRenewableFuel": 4_500, MetricID.waterConsumption: 15_000],
-               outputUnit: "tonnes of fabric", priorFactor: 0.98),
-        Member(name: "Example Trims & Labels", size: .micro,
-               site: ("Workshop", .plant, "Tiruppur", nil, nil),
+        Member(name: "Example Precision Moulders Pvt Ltd", size: .small,
+               site: ("Injection moulding shop", .plant, "Chennai", 13.0980, 80.1620),
+               values: [MetricID.scope1: 260, MetricID.scope2: 2_900, MetricID.revenue: 58, MetricID.output: 2_600,
+                        MetricID.electricityRenewable: 3_000, MetricID.electricityNonRenewable: 14_400,
+                        "energy.nonRenewableFuel": 4_100, MetricID.waterConsumption: 9_500],
+               outputUnit: outputUnit, priorFactor: 1.06),
+        Member(name: "Example Flexible Films Ltd", size: .medium,
+               site: ("Blown-film extrusion plant", .plant, "Kancheepuram", 12.9680, 79.9480),
+               values: [MetricID.scope1: 900, MetricID.scope2: 7_600, MetricID.revenue: 165, MetricID.output: 14_500,
+                        MetricID.electricityRenewable: 4_500, MetricID.electricityNonRenewable: 37_600,
+                        "energy.nonRenewableFuel": 14_300, MetricID.waterConsumption: 21_000],
+               outputUnit: outputUnit, priorFactor: 1.02),
+        Member(name: "Example Additive Works Pvt Ltd", size: .small,
+               site: ("3D printing bureau (powder-bed and FDM)", .plant, "Chennai", 13.0108, 80.2120),
+               values: [MetricID.scope1: 40, MetricID.scope2: 1_150, MetricID.revenue: 36, MetricID.output: 85,
+                        MetricID.electricityRenewable: 2_800, MetricID.electricityNonRenewable: 5_700,
+                        "energy.nonRenewableFuel": 630, MetricID.waterConsumption: 1_200],
+               outputUnit: outputUnit, priorFactor: 1.09),
+        Member(name: "Example Polymer Recyclers Pvt Ltd", size: .small,
+               site: ("Washing and re-pelletising line", .plant, "Krishnagiri", 12.7409, 77.8253),
+               values: [MetricID.scope1: 520, MetricID.scope2: 4_300, MetricID.revenue: 48, MetricID.output: 9_800,
+                        MetricID.electricityRenewable: 1_500, MetricID.electricityNonRenewable: 21_300,
+                        "energy.nonRenewableFuel": 8_250, MetricID.waterConsumption: 38_000],
+               outputUnit: outputUnit, priorFactor: 0.98),
+        Member(name: "Example Tooling & Moulds", size: .micro,
+               site: ("Tool room", .plant, "Chennai", nil, nil),
                values: [:], outputUnit: "", priorFactor: 1),
     ]
 
