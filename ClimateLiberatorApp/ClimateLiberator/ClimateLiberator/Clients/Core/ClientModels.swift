@@ -66,7 +66,7 @@ nonisolated struct Site: Codable, Hashable, Identifiable, Sendable {
 
     var hasCoordinates: Bool { latitude != nil && longitude != nil }
 
-    /// "Tiruppur, Tamil Nadu"; empty when neither is known.
+    /// "Chennai, Tamil Nadu"; empty when neither is known.
     var placeLabel: String {
         [district, state].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
@@ -120,7 +120,7 @@ nonisolated struct Client: Codable, Hashable, Identifiable, Sendable {
     var name = ""
     var sector: IndustrySector = .manufacturing
     var size: EnterpriseSize = .small
-    /// Industrial cluster or programme the client belongs to, e.g. "Tiruppur knitwear".
+    /// Industrial cluster or programme the client belongs to, e.g. "Chennai polymer cluster".
     /// Free text so consultants can use their own grouping; matched case-insensitively.
     var cluster = ""
     var cin = ""
