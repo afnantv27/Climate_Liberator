@@ -28,7 +28,7 @@ struct SiteEditorSheet: View {
             Text(site.name.isEmpty ? "New Site" : site.name).font(.title2.weight(.semibold))
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 10) {
                 DSFormRow("Name", width: 110) {
-                    TextField("e.g. Avinashi Road dyeing unit", text: $site.name).textFieldStyle(.roundedBorder)
+                    TextField("e.g. Ambattur injection moulding shop", text: $site.name).textFieldStyle(.roundedBorder)
                 }
                 DSFormRow("Type", width: 110) {
                     Picker("Type", selection: $site.kind) {
