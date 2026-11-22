@@ -25,7 +25,7 @@ struct MeasuresView: View {
                     }
                 } content: {
                     if measures.isEmpty {
-                        Text("No measures yet. Add actions such as rooftop solar, a boiler fuel switch or compressed-air leak repair, with their yearly cut and costs.")
+                        Text("No measures yet. Add actions such as servo-drive retrofits on moulding machines, rooftop solar or chiller upgrades, with their yearly cut and costs.")
                             .font(.callout).foregroundStyle(DSStyle.subtle)
                     }
                     VStack(spacing: 6) {
